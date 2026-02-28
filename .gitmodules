@@ -1,0 +1,6 @@
+[submodule "skills/video-processing"]
+	path = skills/video-processing
+	url = https://github.com/FilippTrigub/clawvig
+[submodule "skills/image-processing"]
+	path = skills/image-processing
+	url = https://github.com/FilippTrigub/clawimig
