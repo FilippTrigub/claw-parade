@@ -1,0 +1,60 @@
+networks:
+  shared:
+    name: bot-shared
+
+services:
+  openclaw-gateway:
+    image: ${OPENCLAW_IMAGE:-clawparade:latest}
+    container_name: openclaw-gateway
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
+      CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY}
+      CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE}
+      BRAVE_API_KEY: ${BRAVE_API_KEY}
+      GH_TOKEN: ${GH_TOKEN}
+    volumes:
+      - ~/.openclaw:/home/node/.openclaw
+      - ~/.openclaw/workspace:/home/node/.openclaw/workspace
+    ports:
+      - "${OPENCLAW_GATEWAY_PORT:-18789}:18789"
+      - "${OPENCLAW_BRIDGE_PORT:-18791}:18790"
+    networks:
+      - shared
+    init: true
+    restart: unless-stopped
+    command:
+      [
+        "node",
+        "dist/index.js",
+        "gateway",
+        "--bind",
+        "${OPENCLAW_GATEWAY_BIND:-lan}",
+        "--port",
+        "18789",
+      ]
+
+  openclaw-cli:
+    image: ${OPENCLAW_IMAGE:-clawparade:latest}
+    container_name: openclaw-cli
+    environment:
+      HOME: /home/node
+      TERM: xterm-256color
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN}
+      BROWSER: echo
+      CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY}
+      CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY}
+      CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE}
+      BRAVE_API_KEY: ${BRAVE_API_KEY}
+      GH_TOKEN: ${GH_TOKEN}
+    volumes:
+      - ~/.openclaw:/home/node/.openclaw
+      - ~/.openclaw/workspace:/home/node/.openclaw/workspace
+    networks:
+      - shared
+    stdin_open: true
+    tty: true
+    init: true
+    entrypoint: ["node", "dist/index.js"]
