@@ -1,0 +1,80 @@
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Directory based environment variables
+.env
+
+# Coverage directory
+coverage/
+
+# Node.js (if used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python (if used)
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Log files
+*.log
+logs/
+
+# Build output
+dist/
+build/
+out/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Cloud storage sync
+.dropbox/
+.box_cache/
+
+# Backup files
+*.backup
+*.bkp
+
+# GDrive sync folder (if used locally)
+gdrive_sync/
+
+# Output directory for processed content
+output/
+
+# Brand spec - generated from init
+# Keep BRAND.md tracked, but add specific generated files if needed
+# *.brand.md
+
+# Scheduling data
+schedules/
+buffer/
