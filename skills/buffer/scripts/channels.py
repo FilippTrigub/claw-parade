@@ -25,8 +25,8 @@ query ListChannels($input: ChannelsInput!) {
 """
 
 GET_QUERY = """
-query GetChannel($id: String!) {
-  channel(id: $id) {
+query GetChannel($id: ChannelId!) {
+  channel(input: { id: $id }) {
     id
     name
     displayName
@@ -50,6 +50,7 @@ def cmd_list(args: argparse.Namespace) -> None:
 def cmd_get(args: argparse.Namespace) -> None:
     data = graphql(GET_QUERY, {"id": args.channel_id})
     print(json.dumps(data["channel"], indent=2))
+
 
 
 def main() -> None:

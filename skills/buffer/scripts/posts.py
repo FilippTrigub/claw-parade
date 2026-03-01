@@ -6,16 +6,28 @@ Usage:
                          [--limit N] [--after CURSOR]
 
     uv run posts.py create --channel-id CHANNEL_ID --text TEXT
-                           --mode shareNow|addToQueue|customSchedule
+                           --mode shareNow|addToQueue|customScheduled
                            [--due-at ISO8601]
-                           [--image-url URL ...]
+                           [--image-url URL|PATH ...]
                            [--ig-type post|reel|story]
-                           [--first-comment TEXT]
+                           [--ig-first-comment TEXT]
+                           [--li-first-comment TEXT]
                            [--link-attachment URL]
+
+Image URLs:
+    - Pass a public HTTPS URL directly.
+    - Google Drive share URLs (drive.google.com/file/d/...) are auto-converted
+      to direct-fetch format.
+    - Local file paths are NOT supported — upload to Google Drive first:
+        gdrive files upload /path/to/image.jpg
+      Then share the file and pass the share URL here.
 """
 
 import argparse
 import json
+import os
+import re
+import sys
 
 from _client import graphql
 
@@ -77,6 +89,43 @@ mutation CreatePost($input: CreatePostInput!) {
 }
 """
 
+# Matches: https://drive.google.com/file/d/FILE_ID/view...
+_GDRIVE_SHARE_RE = re.compile(
+    r"https://drive\.google\.com/file/d/([a-zA-Z0-9_-]+)"
+)
+
+
+def resolve_image_url(raw: str) -> str:
+    """Convert a raw image argument to a fetchable URL.
+
+    Accepts:
+    - Public HTTPS URLs — returned as-is.
+    - Google Drive share URLs — converted to lh3.googleusercontent.com/d/FILE_ID.
+    - Local paths — exits with a helpful error message.
+    """
+    # Local file path
+    if not raw.startswith("http"):
+        abs_path = os.path.abspath(raw)
+        print(
+            f"Error: '{raw}' looks like a local file path.\n"
+            "Buffer requires a publicly accessible URL.\n"
+            "Upload the file to Google Drive first:\n"
+            f"    gdrive files upload \"{abs_path}\"\n"
+            "Then share it (Anyone with the link) and pass the share URL here.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    # Google Drive share URL → direct URL
+    m = _GDRIVE_SHARE_RE.search(raw)
+    if m:
+        file_id = m.group(1)
+        direct = f"https://lh3.googleusercontent.com/d/{file_id}"
+        print(f"Google Drive URL detected → converted to: {direct}", file=sys.stderr)
+        return direct
+
+    return raw
+
 
 def cmd_list(args: argparse.Namespace) -> None:
     node_fields = BASE_NODE_FIELDS
@@ -123,15 +172,27 @@ def cmd_create(args: argparse.Namespace) -> None:
         post_input["dueAt"] = args.due_at
 
     if args.image_url:
-        post_input["assets"] = {"images": [{"url": url} for url in args.image_url]}
+        resolved = [resolve_image_url(u) for u in args.image_url]
+        post_input["assets"] = {"images": [{"url": url} for url in resolved]}
+
+    ig_meta: dict = {}
+    if args.ig_type:
+        ig_meta["type"] = args.ig_type
+        ig_meta.setdefault("shouldShareToFeed", False)
+    if args.ig_first_comment:
+        ig_meta["firstComment"] = args.ig_first_comment
+
+    li_meta: dict = {}
+    if args.li_first_comment:
+        li_meta["firstComment"] = args.li_first_comment
+    if args.link_attachment:
+        li_meta["linkAttachment"] = {"url": args.link_attachment}
 
     metadata: dict = {}
-    if args.ig_type:
-        metadata["type"] = args.ig_type
-    if args.first_comment:
-        metadata["firstComment"] = args.first_comment
-    if args.link_attachment:
-        metadata["linkAttachment"] = {"url": args.link_attachment}
+    if ig_meta:
+        metadata["instagram"] = ig_meta
+    if li_meta:
+        metadata["linkedin"] = li_meta
     if metadata:
         post_input["metadata"] = metadata
 
@@ -141,7 +202,11 @@ def cmd_create(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Buffer posts")
+    parser = argparse.ArgumentParser(
+        description="Buffer posts",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_list = sub.add_parser("list", help="List posts")
@@ -158,14 +223,22 @@ def main() -> None:
     p_create.add_argument(
         "--mode",
         required=True,
-        choices=["shareNow", "addToQueue", "shareNext", "customSchedule", "recommendedTime"],
+        choices=["shareNow", "addToQueue", "shareNext", "customScheduled", "recommendedTime"],
     )
-    p_create.add_argument("--due-at", metavar="ISO8601", help="Schedule time (for customSchedule)")
+    p_create.add_argument("--due-at", metavar="ISO8601", help="Schedule time (for customScheduled)")
     p_create.add_argument(
-        "--image-url", action="append", metavar="URL", help="Image URL (repeat for multiple)"
+        "--image-url",
+        action="append",
+        metavar="URL",
+        help="Image URL or Google Drive share URL (repeat for multiple). Local paths not supported — upload via gdrive CLI first.",
     )
-    p_create.add_argument("--ig-type", choices=["post", "reel", "story"], help="Instagram post type")
-    p_create.add_argument("--first-comment", metavar="TEXT", help="First comment text")
+    p_create.add_argument(
+        "--ig-type",
+        choices=["post", "reel", "story"],
+        help="Instagram post type (required for Instagram channels)",
+    )
+    p_create.add_argument("--ig-first-comment", metavar="TEXT", help="Instagram first comment")
+    p_create.add_argument("--li-first-comment", metavar="TEXT", help="LinkedIn first comment")
     p_create.add_argument("--link-attachment", metavar="URL", help="LinkedIn link attachment URL")
 
     args = parser.parse_args()

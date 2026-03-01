@@ -30,7 +30,9 @@ def graphql(query: str, variables: dict | None = None) -> dict:
         json=payload,
         timeout=30,
     )
-    response.raise_for_status()
+    if not response.ok:
+        print(f"HTTP {response.status_code}: {response.text[:500]}", file=sys.stderr)
+        sys.exit(1)
 
     body = response.json()
 
