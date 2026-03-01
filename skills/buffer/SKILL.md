@@ -10,7 +10,7 @@ metadata:
     "openclaw":
       {
         "emoji": "📲",
-        "requires": { "bins": ["curl", "jq"], "env": ["BUFFER_API_KEY"] },
+        "requires": { "bins": ["uv"], "env": ["BUFFER_API_KEY"] },
         "primaryEnv": "BUFFER_API_KEY",
       },
   }
@@ -28,173 +28,133 @@ Schedule, create, and manage social media posts on Instagram and LinkedIn via th
    ```bash
    export BUFFER_API_KEY="your-access-token"
    ```
-
-## API Basics
-
-All requests use a single GraphQL endpoint:
-
-```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "YOUR_GRAPHQL_QUERY"}' | jq
-```
+4. Install script dependencies:
+   ```bash
+   cd skills/buffer/scripts && uv sync
+   ```
 
 > **Note:** Buffer's API is in Beta. All operations use POST with a JSON body containing `query` (and optionally `variables`).
 
 ## Operations
+
+All scripts are run from `skills/buffer/scripts/` with `uv run`.
 
 ### Get Organizations
 
 Retrieve your organization IDs — needed for all other calls.
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "query { account { organizations { id name ownerEmail } } }"}' | jq '.data.account.organizations'
+uv run organizations.py list
 ```
 
-### Get Channels
+### List Channels
 
-List connected channels for an organization. Filter by `service` field to find Instagram (`instagram`) or LinkedIn (`linkedin`) channels.
+List connected channels for an organization.
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "query { channels(input: { organizationId: \"ORG_ID\" }) { id name displayName service avatar isQueuePaused } }"}' | jq '.data.channels'
+uv run channels.py list --org-id ORG_ID
 ```
 
-Filter to Instagram and LinkedIn only:
+List only unlocked (active) channels:
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "query { channels(input: { organizationId: \"ORG_ID\" }) { id name displayName service avatar isQueuePaused } }"}' | jq '[.data.channels[] | select(.service == "instagram" or .service == "linkedin")]'
+uv run channels.py list --org-id ORG_ID --unlocked
+```
+
+### Get a Single Channel
+
+```bash
+uv run channels.py get --channel-id CHANNEL_ID
+```
+
+### Get Scheduled Posts
+
+```bash
+uv run posts.py list --org-id ORG_ID --status scheduled
+```
+
+Filter by channel and include asset details:
+
+```bash
+uv run posts.py list --org-id ORG_ID --status scheduled --channel-id CHANNEL_ID --with-assets
+```
+
+Paginate results:
+
+```bash
+uv run posts.py list --org-id ORG_ID --status scheduled --limit 10 --after CURSOR
+```
+
+### Get Sent Posts
+
+```bash
+uv run posts.py list --org-id ORG_ID --status sent
 ```
 
 ### Create Text Post
 
-Post text to a channel. Modes: `addToQueue`, `shareNow`, `shareNext`, `customSchedule`, `recommendedTime`.
-
 **Share now:**
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createPost(input: { text: \"Your post text here\", channelId: \"CHANNEL_ID\", schedulingType: automatic, mode: shareNow }) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }"
-  }' | jq '.data.createPost'
-```
-
-**Schedule for a specific time:**
-
-```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createPost(input: { text: \"Your scheduled post\", channelId: \"CHANNEL_ID\", schedulingType: automatic, mode: customSchedule, dueAt: \"2026-03-01T14:00:00Z\" }) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }"
-  }' | jq '.data.createPost'
+uv run posts.py create --channel-id CHANNEL_ID --text "Your post text here" --mode shareNow
 ```
 
 **Add to queue:**
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createPost(input: { text: \"Queued post\", channelId: \"CHANNEL_ID\", schedulingType: automatic, mode: addToQueue }) { ... on PostActionSuccess { post { id text dueAt } } ... on MutationError { message } } }"
-  }' | jq '.data.createPost'
+uv run posts.py create --channel-id CHANNEL_ID --text "Queued post" --mode addToQueue
+```
+
+**Schedule for a specific time:**
+
+```bash
+uv run posts.py create --channel-id CHANNEL_ID --text "Your scheduled post" --mode customSchedule --due-at "2026-03-01T14:00:00Z"
 ```
 
 ### Create Image Post
 
-Same as text post but include `assets` with an `images` array.
-
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createPost(input: { text: \"Check out this photo!\", channelId: \"CHANNEL_ID\", schedulingType: automatic, mode: shareNow, assets: { images: [{ url: \"https://example.com/photo.jpg\" }] } }) { ... on PostActionSuccess { post { id text } } ... on MutationError { message } } }"
-  }' | jq '.data.createPost'
+uv run posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" --mode shareNow \
+  --image-url "https://example.com/photo.jpg"
 ```
 
 Multiple images:
 
 ```bash
-assets: { images: [{ url: "https://example.com/1.jpg" }, { url: "https://example.com/2.jpg" }] }
+uv run posts.py create --channel-id CHANNEL_ID --text "Photo carousel" --mode shareNow \
+  --image-url "https://example.com/1.jpg" \
+  --image-url "https://example.com/2.jpg"
 ```
 
 ### Instagram-Specific Features
 
-Use the `metadata` field within `createPost` input for Instagram-specific options:
+- **Post type** — `--ig-type`: `post` (default), `reel`, or `story`
+- **First comment** — `--first-comment TEXT`
 
-- **Post type** — `type`: `post` (default), `reel`, or `story`
-- **First comment** — `firstComment`: text posted as the first comment
-- **Geolocation** — `geolocation`: location tagging object
-- **Share reel to feed** — `shouldShareToFeed`: `true`/`false` (for reels)
-- **Scheduling type** — Use `schedulingType: notification` for reminder-based posting (required for stories and some post types that need manual publish)
-
-Example — Create an Instagram reel with first comment:
+Example — Instagram reel with first comment:
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createPost(input: { text: \"Amazing reel!\", channelId: \"IG_CHANNEL_ID\", schedulingType: automatic, mode: shareNow, assets: { images: [{ url: \"https://example.com/video.mp4\" }] }, metadata: { type: reel, firstComment: \"Follow for more!\", shouldShareToFeed: true } }) { ... on PostActionSuccess { post { id text } } ... on MutationError { message } } }"
-  }' | jq '.data.createPost'
+uv run posts.py create --channel-id IG_CHANNEL_ID \
+  --text "Amazing reel!" \
+  --mode shareNow \
+  --image-url "https://example.com/video.mp4" \
+  --ig-type reel \
+  --first-comment "Follow for more!"
 ```
 
 ### LinkedIn-Specific Features
 
-Use the `metadata` field for LinkedIn-specific options:
-
-- **First comment** — `firstComment`: initial comment on the post
-- **Link attachment** — `linkAttachment`: `{ url: "https://..." }` to attach a link preview
-- **Annotations** — `annotations`: for @mentions in the post
+- **First comment** — `--first-comment TEXT`
+- **Link attachment** — `--link-attachment URL`
 
 Example — LinkedIn post with link attachment:
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createPost(input: { text: \"Great article on AI trends\", channelId: \"LI_CHANNEL_ID\", schedulingType: automatic, mode: shareNow, metadata: { linkAttachment: { url: \"https://example.com/article\" }, firstComment: \"What do you think?\" } }) { ... on PostActionSuccess { post { id text } } ... on MutationError { message } } }"
-  }' | jq '.data.createPost'
-```
-
-### Get Scheduled Posts
-
-Query posts filtered by `status: [scheduled]`.
-
-```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "query { posts(input: { organizationId: \"ORG_ID\", filter: { status: [scheduled], channelIds: [\"CHANNEL_ID\"] }, sort: [{ field: dueAt, direction: asc }] }) { edges { node { id text createdAt dueAt channelId status } } } }"
-  }' | jq '.data.posts.edges[].node'
-```
-
-### Get Sent Posts
-
-Same pattern with `status: sent`.
-
-```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "query { posts(input: { organizationId: \"ORG_ID\", filter: { status: [sent], channelIds: [\"CHANNEL_ID\"] }, sort: [{ field: dueAt, direction: desc }] }) { edges { node { id text createdAt dueAt channelId status } } } }"
-  }' | jq '.data.posts.edges[].node'
+uv run posts.py create --channel-id LI_CHANNEL_ID \
+  --text "Great article on AI trends" \
+  --mode shareNow \
+  --link-attachment "https://example.com/article" \
+  --first-comment "What do you think?"
 ```
 
 ### Create Idea
@@ -202,12 +162,7 @@ curl -s -X POST https://api.buffer.com \
 Save content ideas to Buffer for later use.
 
 ```bash
-curl -s -X POST https://api.buffer.com \
-  -H "Authorization: Bearer $BUFFER_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "mutation { createIdea(input: { organizationId: \"ORG_ID\", content: { title: \"Post idea title\", text: \"Draft content for the post...\" } }) { ... on Idea { id content { title text } } } }"
-  }' | jq '.data.createIdea'
+uv run ideas.py create --org-id ORG_ID --title "Post idea title" --text "Draft content for the post..."
 ```
 
 ## Workflow Guidance
@@ -229,15 +184,7 @@ GraphQL errors return in the `errors` array or as `MutationError` union types. C
 - `InvalidInputError` — Malformed query or missing required fields
 - `LimitReachedError` — Plan limits exceeded (e.g., too many scheduled posts)
 
-Check for errors:
-
-```bash
-# Check for top-level GraphQL errors
-... | jq '.errors'
-
-# Check for mutation-level errors
-... | jq '.data.createPost | if .message then {error: .message} else {post: .post} end'
-```
+Scripts exit with a non-zero code and print the error message to stderr on failure.
 
 ## Limitations
 
