@@ -109,9 +109,10 @@ def resolve_image_url(raw: str) -> str:
         print(
             f"Error: '{raw}' looks like a local file path.\n"
             "Buffer requires a publicly accessible URL.\n"
-            "Upload the file to Google Drive first:\n"
-            f"    gdrive files upload \"{abs_path}\"\n"
-            "Then share it (Anyone with the link) and pass the share URL here.",
+            "Upload the file to Google Drive first using gog cli\n"
+            f" gog drive upload \"{abs_path}\" --parent <folderId>\n"
+            "Then share it (Anyone with the link) and pass the share URL here."
+            f" gog drive share <fileId> --to=anyone   \n",
             file=sys.stderr,
         )
         sys.exit(1)
