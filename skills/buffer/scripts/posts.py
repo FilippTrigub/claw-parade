@@ -9,6 +9,7 @@ Usage:
                            --mode shareNow|addToQueue|customScheduled
                            [--due-at ISO8601]
                            [--image-url URL|PATH ...]
+                           [--video-url URL|PATH]
                            [--ig-type post|reel|story]
                            [--ig-first-comment TEXT]
                            [--li-first-comment TEXT]
@@ -19,8 +20,16 @@ Image URLs:
     - Google Drive share URLs (drive.google.com/file/d/...) are auto-converted
       to direct-fetch format.
     - Local file paths are NOT supported — upload to Google Drive first:
-        gdrive files upload /path/to/image.jpg
+        gog drive upload /path/to/image.jpg
       Then share the file and pass the share URL here.
+
+Video (--video-url):
+    NOT SUPPORTED by the Buffer public API. The API accepts the request but
+    silently ignores the video — the post will be created with empty content.
+    Buffer's own documentation states: "video is not supported via public API."
+    Use Buffer's web UI to attach videos manually, or use notification-mode
+    scheduling (schedulingType: notification) to get a push reminder to post
+    manually from the Instagram app.
 """
 
 import argparse
@@ -117,7 +126,7 @@ def resolve_image_url(raw: str) -> str:
         )
         sys.exit(1)
 
-    # Google Drive share URL → direct URL
+    # Google Drive share URL → direct URL (images only; videos need a different host)
     m = _GDRIVE_SHARE_RE.search(raw)
     if m:
         file_id = m.group(1)
@@ -172,9 +181,19 @@ def cmd_create(args: argparse.Namespace) -> None:
     if args.due_at:
         post_input["dueAt"] = args.due_at
 
+    assets: dict = {}
     if args.image_url:
-        resolved = [resolve_image_url(u) for u in args.image_url]
-        post_input["assets"] = {"images": [{"url": url} for url in resolved]}
+        assets["images"] = [{"url": resolve_image_url(u)} for u in args.image_url]
+    if args.video_url:
+        print(
+            "Warning: --video-url is not supported by the Buffer public API. "
+            "The post will be created but the video will be empty. "
+            "Use Buffer's web UI to attach videos.",
+            file=sys.stderr,
+        )
+        assets["videos"] = [{"url": resolve_image_url(args.video_url)}]
+    if assets:
+        post_input["assets"] = assets
 
     ig_meta: dict = {}
     if args.ig_type:
@@ -231,7 +250,12 @@ def main() -> None:
         "--image-url",
         action="append",
         metavar="URL",
-        help="Image URL or Google Drive share URL (repeat for multiple). Local paths not supported — upload via gdrive CLI first.",
+        help="Image URL or Google Drive share URL (repeat for multiple). Local paths not supported — upload via gog drive upload first.",
+    )
+    p_create.add_argument(
+        "--video-url",
+        metavar="URL",
+        help="Video URL or Google Drive share URL. Local paths not supported — upload via gog drive upload first.",
     )
     p_create.add_argument(
         "--ig-type",
