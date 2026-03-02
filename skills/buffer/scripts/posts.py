@@ -14,29 +14,31 @@ Usage:
                            [--ig-first-comment TEXT]
                            [--li-first-comment TEXT]
                            [--link-attachment URL]
+                           [--tunnel-wait SECONDS]
 
-Image URLs:
+Image and video URLs:
     - Pass a public HTTPS URL directly.
     - Google Drive share URLs (drive.google.com/file/d/...) are auto-converted
-      to direct-fetch format.
-    - Local file paths are NOT supported — upload to Google Drive first:
-        gog drive upload /path/to/image.jpg
-      Then share the file and pass the share URL here.
-
-Video (--video-url):
-    NOT SUPPORTED by the Buffer public API. The API accepts the request but
-    silently ignores the video — the post will be created with empty content.
-    Buffer's own documentation states: "video is not supported via public API."
-    Use Buffer's web UI to attach videos manually, or use notification-mode
-    scheduling (schedulingType: notification) to get a push reminder to post
-    manually from the Instagram app.
+      to direct-fetch format for images (lh3.googleusercontent.com) and direct-download
+      format for video (drive.google.com/uc?export=download&id=FILE_ID).
+    - Local file paths are supported via a cloudflared tunnel (cloudflared must be
+      installed). All local files are served from a single HTTP server exposed through
+      the tunnel. The tunnel stays alive for --tunnel-wait seconds (default 90) after
+      the API call to give Buffer time to fetch the media, then shuts down automatically.
+      Install cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
 """
 
 import argparse
+import http.server
 import json
 import os
 import re
+import socket
+import subprocess
 import sys
+import threading
+import time
+from pathlib import Path
 
 from _client import graphql
 
@@ -84,6 +86,7 @@ CREATE_MUTATION = """
 mutation CreatePost($input: CreatePostInput!) {
   createPost(input: $input) {
     ... on PostActionSuccess {
+      __typename
       post {
         id
         text
@@ -92,6 +95,7 @@ mutation CreatePost($input: CreatePostInput!) {
       }
     }
     ... on MutationError {
+      __typename
       message
     }
   }
@@ -104,33 +108,150 @@ _GDRIVE_SHARE_RE = re.compile(
 )
 
 
-def resolve_image_url(raw: str) -> str:
-    """Convert a raw image argument to a fetchable URL.
+_TUNNEL_URL_RE = re.compile(r"https://[a-z0-9-]+\.trycloudflare\.com")
 
-    Accepts:
-    - Public HTTPS URLs — returned as-is.
-    - Google Drive share URLs — converted to lh3.googleusercontent.com/d/FILE_ID.
-    - Local paths — exits with a helpful error message.
+
+def _serve_local_files(paths: list[str]) -> tuple[dict[str, str], "callable"]:
+    """Start a single HTTP server + cloudflared tunnel for one or more local files.
+
+    Serves from the common ancestor directory of all files so a single server
+    can cover images and video together even if they live in different subdirs.
+
+    Returns ({original_path: public_url}, shutdown_fn).
+    Requires `cloudflared` on PATH.
     """
-    # Local file path
-    if not raw.startswith("http"):
-        abs_path = os.path.abspath(raw)
+    resolved = [Path(p).resolve() for p in paths]
+
+    for fp in resolved:
+        if not fp.exists():
+            print(f"Error: file not found: {fp}", file=sys.stderr)
+            sys.exit(1)
+
+    # Serve from the common ancestor of all files.
+    if len(resolved) == 1:
+        serve_dir = resolved[0].parent
+    else:
+        serve_dir = Path(os.path.commonpath([str(fp) for fp in resolved]))
+        if serve_dir.is_file():
+            serve_dir = serve_dir.parent
+
+    with socket.socket() as s:
+        s.bind(("", 0))
+        port = s.getsockname()[1]
+
+    class _Handler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory=str(serve_dir), **kwargs)
+
+        def log_message(self, fmt, *args):
+            print(f"HTTP server: {fmt % args}", file=sys.stderr)
+
+    server = http.server.HTTPServer(("", port), _Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    print(f"Local HTTP server started on :{port} (serving {serve_dir})", file=sys.stderr)
+
+    try:
+        proc = subprocess.Popen(
+            ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.DEVNULL,
+            text=True,
+        )
+    except FileNotFoundError:
+        server.shutdown()
         print(
-            f"Error: '{raw}' looks like a local file path.\n"
-            "Buffer requires a publicly accessible URL.\n"
-            "Upload the file to Google Drive first using gog cli\n"
-            f" gog drive upload \"{abs_path}\" --parent <folderId>\n"
-            "Then share it (Anyone with the link) and pass the share URL here."
-            f" gog drive share <fileId> --to=anyone   \n",
+            "Error: 'cloudflared' not found on PATH.\n"
+            "Install it from: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/",
             file=sys.stderr,
         )
         sys.exit(1)
 
-    # Google Drive share URL → direct URL (images only; videos need a different host)
+    print("Waiting for cloudflared tunnel URL...", file=sys.stderr)
+    tunnel_base = None
+    for line in proc.stderr:
+        m = _TUNNEL_URL_RE.search(line)
+        if m:
+            tunnel_base = m.group(0)
+            break
+
+    if not tunnel_base:
+        proc.terminate()
+        server.shutdown()
+        print("Error: could not obtain cloudflared tunnel URL.", file=sys.stderr)
+        sys.exit(1)
+
+    url_map = {
+        orig: f"{tunnel_base}/{fp.relative_to(serve_dir)}"
+        for orig, fp in zip(paths, resolved)
+    }
+
+    print(f"Tunnel ready → {tunnel_base}", file=sys.stderr)
+    for orig, url in url_map.items():
+        print(f"  {orig} → {url}", file=sys.stderr)
+    print("Waiting 10s for tunnel to propagate...", file=sys.stderr)
+    time.sleep(10)
+
+    def shutdown() -> None:
+        proc.terminate()
+        server.shutdown()
+        print("Tunnel and local server stopped.", file=sys.stderr)
+
+    return url_map, shutdown
+
+
+def _probe_url(url: str, retries: int = 3) -> None:
+    """HEAD-probe a URL, retrying on failure. Exits if all attempts fail."""
+    import urllib.request
+    import urllib.error
+
+    for attempt in range(1, retries + 1):
+        try:
+            req = urllib.request.Request(url, method="HEAD")
+            resp = urllib.request.urlopen(req, timeout=10)
+            cl = int(resp.headers.get("content-length") or 0)
+            if resp.status == 200 and cl > 0:
+                print(f"  verified: {url} ({cl} bytes)", file=sys.stderr)
+                return
+            print(f"  attempt {attempt}: status={resp.status} content-length={cl}", file=sys.stderr)
+        except Exception as e:
+            print(f"  attempt {attempt} failed: {e}", file=sys.stderr)
+        if attempt < retries:
+            time.sleep(3)
+
+    print(f"Error: URL not accessible after {retries} attempts: {url}", file=sys.stderr)
+    sys.exit(1)
+
+
+def resolve_image_url(raw: str) -> str:
+    """Convert a remote image argument to a fetchable URL.
+
+    Accepts:
+    - Public HTTPS URLs — returned as-is.
+    - Google Drive share URLs — converted to lh3.googleusercontent.com/d/FILE_ID.
+    - Local paths must be resolved via _serve_local_files() before calling this.
+    """
     m = _GDRIVE_SHARE_RE.search(raw)
     if m:
         file_id = m.group(1)
         direct = f"https://lh3.googleusercontent.com/d/{file_id}"
+        print(f"Google Drive URL detected → converted to: {direct}", file=sys.stderr)
+        return direct
+
+    return raw
+
+
+def resolve_video_url(raw: str) -> str:
+    """Convert a raw video argument to a direct-download URL.
+
+    Accepts:
+    - Public HTTPS direct-download URLs — returned as-is.
+    - Google Drive share URLs — converted to drive.google.com/uc?export=download&id=FILE_ID.
+    - Local paths — callers must handle via _serve_local_files() before calling this.
+    """
+    m = _GDRIVE_SHARE_RE.search(raw)
+    if m:
+        file_id = m.group(1)
+        direct = f"https://drive.google.com/uc?export=download&id={file_id}"
         print(f"Google Drive URL detected → converted to: {direct}", file=sys.stderr)
         return direct
 
@@ -181,17 +302,30 @@ def cmd_create(args: argparse.Namespace) -> None:
     if args.due_at:
         post_input["dueAt"] = args.due_at
 
+    # Collect all local paths so they can share a single tunnel.
+    local_paths = []
+    if args.image_url:
+        local_paths.extend(u for u in args.image_url if not u.startswith("http"))
+    if args.video_url and not args.video_url.startswith("http"):
+        local_paths.append(args.video_url)
+
+    url_map: dict[str, str] = {}
+    shutdown_tunnel = None
+    if local_paths:
+        url_map, shutdown_tunnel = _serve_local_files(local_paths)
+        print("Verifying tunnel URLs...", file=sys.stderr)
+        for url in url_map.values():
+            _probe_url(url)
+
     assets: dict = {}
     if args.image_url:
-        assets["images"] = [{"url": resolve_image_url(u)} for u in args.image_url]
+        assets["images"] = [
+            {"url": url_map[u] if u in url_map else resolve_image_url(u)}
+            for u in args.image_url
+        ]
     if args.video_url:
-        print(
-            "Warning: --video-url is not supported by the Buffer public API. "
-            "The post will be created but the video will be empty. "
-            "Use Buffer's web UI to attach videos.",
-            file=sys.stderr,
-        )
-        assets["videos"] = [{"url": resolve_image_url(args.video_url)}]
+        video_url = url_map.get(args.video_url) or resolve_video_url(args.video_url)
+        assets["videos"] = [{"url": video_url}]
     if assets:
         post_input["assets"] = assets
 
@@ -216,7 +350,15 @@ def cmd_create(args: argparse.Namespace) -> None:
     if metadata:
         post_input["metadata"] = metadata
 
-    data = graphql(CREATE_MUTATION, {"input": post_input})
+    try:
+        data = graphql(CREATE_MUTATION, {"input": post_input})
+    finally:
+        if shutdown_tunnel:
+            wait = getattr(args, "tunnel_wait", 60)
+            print(f"API call complete. Keeping tunnel alive for {wait}s while Buffer fetches the video...", file=sys.stderr)
+            time.sleep(wait)
+            shutdown_tunnel()
+
     result = data["createPost"]
     print(json.dumps(result, indent=2))
 
@@ -249,13 +391,13 @@ def main() -> None:
     p_create.add_argument(
         "--image-url",
         action="append",
-        metavar="URL",
-        help="Image URL or Google Drive share URL (repeat for multiple). Local paths not supported — upload via gog drive upload first.",
+        metavar="URL|PATH",
+        help="Image URL, Google Drive share URL, or local file path (repeat for multiple). Local paths served via cloudflared tunnel.",
     )
     p_create.add_argument(
         "--video-url",
-        metavar="URL",
-        help="Video URL or Google Drive share URL. Local paths not supported — upload via gog drive upload first.",
+        metavar="URL|PATH",
+        help="Video URL, Google Drive share URL, or local file path. Local paths are served via a cloudflared tunnel (cloudflared must be installed).",
     )
     p_create.add_argument(
         "--ig-type",
@@ -265,6 +407,13 @@ def main() -> None:
     p_create.add_argument("--ig-first-comment", metavar="TEXT", help="Instagram first comment")
     p_create.add_argument("--li-first-comment", metavar="TEXT", help="LinkedIn first comment")
     p_create.add_argument("--link-attachment", metavar="URL", help="LinkedIn link attachment URL")
+    p_create.add_argument(
+        "--tunnel-wait",
+        type=int,
+        default=60,
+        metavar="SECONDS",
+        help="Seconds to keep cloudflared tunnel alive after API call (for local video files). Default: 60",
+    )
 
     args = parser.parse_args()
     if args.command == "list":
