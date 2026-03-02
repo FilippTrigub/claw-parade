@@ -2,7 +2,7 @@
 
 ## Overview
 
-This agent transforms raw inputs into polished, multi-channel social media content with images/videos. It maintains brand consistency throughout and schedules publications with a buffer strategy.
+This agent transforms raw inputs into polished, multi-channel social media content with images/videos. It maintains brand consistency throughout and schedules publications via Buffer.
 
 ---
 
@@ -26,8 +26,6 @@ This agent transforms raw inputs into polished, multi-channel social media conte
 
 **Goal**: Process raw input into ready-to-publish content
 
-**Steps**:
-
 #### 2.1 Read Raw Input
 ```
 Input: New article link, meeting notes, idea snippet, blog post draft
@@ -50,36 +48,65 @@ Output: Brand-aligned post ready for channel formatting
 ```
 
 #### 2.4 Process Media (Image/Video)
-```
-Input: Brand-aligned post, BRAND.md visual specs
-Action:
-  - Use existing clawvig for video processing/generation
-  - Use clawimig for image processing/generation
-  - Apply brand colors, fonts, style guidelines
-Output: Processed media assets (images/videos)
-```
 
-#### 2.5 Organize to Storage
+**Images** — use the `clawimig` skill:
+```bash
+# Install deps (first run only)
+cd skills/image-processing/scripts && uv sync && npm install
+
+# Run the pipeline
+uv run --project skills/image-processing/scripts \
+  python skills/image-processing/scripts/process.py --config config.json
 ```
-Input: Final post + media assets
-Action: Save to Google Drive or local output directory
-Organize by:
-  - Date (YYYY/MM/DD)
-  - Channel (instagram, linkedin, twitter)
-  - Status (draft, scheduled, published)
-Output: Files stored in /output/[channel]/[date]/
+Output lands in `output/` (path set in `config.json`).
+
+**Videos** — use the `clawvig` skill:
+```bash
+# Install deps (first run only)
+cd ~/.openclaw/skills/clawvig && uv sync
+
+# Cinematic preset with futuristic captions
+cd ~/.openclaw/skills/clawvig && uv run python scripts/caption_service.py \
+  --output output --preset cinematic \
+  --css ~/.openclaw/skills/clawvig/scripts/futuristic.css
+```
+Output lands in `~/.openclaw/skills/clawvig/output/`.
+
+#### 2.5 Organize Output
+```
+Input: Final post text + media files
+Action: Save to local output directory
+Organize by: channel / date (YYYY/MM/DD) / status
+Output: Files stored in output/[channel]/[date]/
 ```
 
 #### 2.6 Schedule with Buffer
+
+Use the `buffer` skill scripts from `skills/buffer/scripts/`:
+
+```bash
+# Get your org ID (one-time)
+uv run organizations.py list
+
+# Schedule an image post
+uv run posts.py create \
+  --channel-id CHANNEL_ID \
+  --text "Post text here" \
+  --mode customScheduled \
+  --due-at "2026-04-01T12:00:00Z" \
+  --image-url output/instagram/2026-04-01/photo.jpg
+
+# Schedule a video reel (local file served automatically via cloudflared)
+uv run posts.py create \
+  --channel-id CHANNEL_ID \
+  --text "Reel caption here" \
+  --mode customScheduled \
+  --due-at "2026-04-01T12:00:00Z" \
+  --video-url output/instagram/2026-04-01/video.mp4 \
+  --ig-type reel
 ```
-Input: Ready content + media, storage paths
-Action: Add to scheduling buffer
-- Queue for optimal posting times
-- Maintain buffer of 3-7 days
-- Distribute across channels
-- Avoid posting fatigue
-Output: Scheduled posts in buffer queue
-```
+
+Local file paths for `--image-url` and `--video-url` are handled automatically — no manual upload step required. See the `buffer` skill for full details.
 
 ---
 
@@ -94,7 +121,8 @@ claw-parade/
 │   ├── brand-awareness/
 │   │   └── SKILL.md          # Brand awareness skill definition
 │   ├── video-processing/      # Submodule: clawvig
-│   └── image-processing/      # Submodule: clawimig
+│   ├── image-processing/      # Submodule: clawimig
+│   └── buffer/                # Buffer scheduling skill
 ├── input/                     # Raw input files
 │   └── [user-provided content]
 └── output/                    # Processed outputs
@@ -108,12 +136,12 @@ claw-parade/
 
 ## Skill Integration Map
 
-| Skill | Repository | Purpose |
-|-------|------------|---------|
-| brand-awareness | local | Brand identity maintenance |
-| video-processing | clawvig | Video processing/generation |
-| image-processing | clawimig | Image processing/generation |
-| buffer-scheduling | existing | Queue and schedule posts |
+| Skill | Location | Purpose |
+|-------|----------|---------|
+| brand-awareness | `skills/brand-awareness/` | Brand identity maintenance |
+| video-processing | `skills/video-processing/` (clawvig) | Video enhancement and captioning |
+| image-processing | `skills/image-processing/` (clawimig) | Image resize, crop, and filtering |
+| buffer | `skills/buffer/` | Schedule and publish posts |
 
 ---
 
@@ -122,25 +150,33 @@ claw-parade/
 ### First Time Setup
 ```bash
 # 1. Initialize brand (init phase)
-claw init --input ./raw-inputs/
+# Provide raw input files in input/, then run brand-awareness skill
 
-# 2. Process content (regular phase)
-claw process --input ./input/article.md --channel instagram
+# 2. Process media
+cd skills/image-processing/scripts && uv sync && npm install
+cd skills/video-processing && uv sync
 
-# 3. Review and schedule
-claw schedule --buffer-days 5
+# 3. Install Buffer script deps
+cd skills/buffer/scripts && uv sync
 ```
 
 ### Regular Use
 ```bash
-# Process a new idea
-claw process --input ./input/idea.txt --channel twitter
+# Process images
+uv run --project skills/image-processing/scripts \
+  python skills/image-processing/scripts/process.py --config config.json
 
-# Process video content
-claw process --input ./input/meeting.mp4 --channel linkedin --video
+# Process video
+cd ~/.openclaw/skills/clawvig && uv run python scripts/caption_service.py \
+  --output output --preset cinematic
 
-# Bulk process from folder
-claw process --folder ./input/ --channel instagram
+# Schedule post (local file paths work directly)
+cd skills/buffer/scripts
+uv run posts.py create \
+  --channel-id CHANNEL_ID \
+  --text "Caption here" \
+  --mode addToQueue \
+  --image-url ../../output/instagram/photo.jpg
 ```
 
 ---
@@ -149,12 +185,12 @@ claw process --folder ./input/ --channel instagram
 
 ### Environment Variables
 ```bash
-CLAW_BRAND_FILE=./BRAND.md          # Path to brand spec
-CLAW_INPUT_DIR=./input/             # Raw input location
-CLAW_OUTPUT_DIR=./output/           # Processed output location
-CLAW_GDRIVE_ENABLED=true            # Enable Google Drive sync
-CLAW_BUFFER_DAYS=5                  # Default buffer days
-CLAW_DEFAULT_CHANNEL=instagram      # Default target channel
+BUFFER_API_KEY=your-buffer-token   # Required for scheduling
+CLAW_BRAND_FILE=./BRAND.md         # Path to brand spec
+CLAW_INPUT_DIR=./input/            # Raw input location
+CLAW_OUTPUT_DIR=./output/          # Processed output location
+CLAW_BUFFER_DAYS=5                 # Default buffer days
+CLAW_DEFAULT_CHANNEL=instagram     # Default target channel
 ```
 
 ### BRAND.md Location

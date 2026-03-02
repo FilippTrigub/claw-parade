@@ -10,7 +10,7 @@ metadata:
     "openclaw":
       {
         "emoji": "📲",
-        "requires": { "bins": ["uv"], "env": ["BUFFER_API_KEY"] },
+        "requires": { "bins": ["uv", "cloudflared"], "env": ["BUFFER_API_KEY"] },
         "primaryEnv": "BUFFER_API_KEY",
       },
   }
@@ -108,43 +108,76 @@ uv run posts.py create --channel-id CHANNEL_ID --text "Queued post" --mode addTo
 **Schedule for a specific time:**
 
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Your scheduled post" --mode customSchedule --due-at "2026-03-01T14:00:00Z"
+uv run posts.py create --channel-id CHANNEL_ID --text "Scheduled post" \
+  --mode customScheduled --due-at "2026-04-01T14:00:00Z"
 ```
 
 ### Create Image Post
 
+Pass a local file path or a public HTTPS URL:
+
 ```bash
-uv run posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" --mode shareNow \
+# Local file (served automatically via cloudflared tunnel)
+uv run posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" \
+  --mode shareNow \
+  --image-url path/to/photo.jpg
+
+# Public URL
+uv run posts.py create --channel-id CHANNEL_ID --text "Check out this photo!" \
+  --mode shareNow \
   --image-url "https://example.com/photo.jpg"
 ```
 
-Multiple images:
+Multiple images (carousel):
 
 ```bash
 uv run posts.py create --channel-id CHANNEL_ID --text "Photo carousel" --mode shareNow \
-  --image-url "https://example.com/1.jpg" \
-  --image-url "https://example.com/2.jpg"
+  --image-url path/to/photo1.jpg \
+  --image-url path/to/photo2.jpg
+```
+
+### Create Video Post
+
+Use `--video-url` for video files. Local file paths are fully supported:
+
+```bash
+# Local video file (served automatically via cloudflared tunnel)
+uv run posts.py create --channel-id CHANNEL_ID --text "Video caption" \
+  --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
+  --video-url path/to/video.mp4
+
+# Public URL
+uv run posts.py create --channel-id CHANNEL_ID --text "Video caption" \
+  --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
+  --video-url "https://example.com/video.mp4"
+```
+
+**How local file serving works:** A local HTTP server is started and exposed via a cloudflared Quick Tunnel (no auth required). The tunnel stays alive for `--tunnel-wait` seconds (default 90) after the API call to give Buffer time to download the file, then shuts down automatically. All local files in a single create call share one server and one tunnel.
+
+You can adjust the wait time if needed:
+```bash
+uv run posts.py create ... --video-url path/to/video.mp4 --tunnel-wait 120
 ```
 
 ### Instagram-Specific Features
 
 - **Post type** — `--ig-type`: `post` (default), `reel`, or `story`
-- **First comment** — `--first-comment TEXT`
+- **First comment** — `--ig-first-comment TEXT`
 
 Example — Instagram reel with first comment:
 
 ```bash
 uv run posts.py create --channel-id IG_CHANNEL_ID \
   --text "Amazing reel!" \
-  --mode shareNow \
-  --image-url "https://example.com/video.mp4" \
+  --mode customScheduled --due-at "2026-04-01T12:00:00Z" \
+  --video-url path/to/reel.mp4 \
   --ig-type reel \
-  --first-comment "Follow for more!"
+  --ig-first-comment "Follow for more!"
 ```
 
 ### LinkedIn-Specific Features
 
-- **First comment** — `--first-comment TEXT`
+- **First comment** — `--li-first-comment TEXT`
 - **Link attachment** — `--link-attachment URL`
 
 Example — LinkedIn post with link attachment:
@@ -154,7 +187,7 @@ uv run posts.py create --channel-id LI_CHANNEL_ID \
   --text "Great article on AI trends" \
   --mode shareNow \
   --link-attachment "https://example.com/article" \
-  --first-comment "What do you think?"
+  --li-first-comment "What do you think?"
 ```
 
 ### Create Idea
@@ -191,4 +224,4 @@ Scripts exit with a non-zero code and print the error message to stderr on failu
 - Cannot edit or delete posts via the API
 - TikTok channels are not supported (Instagram and LinkedIn only)
 - The Buffer API is in Beta — endpoints may change
-- Image URLs must be publicly accessible for Buffer to fetch them
+- Local file serving requires `cloudflared` to be installed and on PATH
