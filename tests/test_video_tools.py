@@ -75,8 +75,8 @@ class TestClawRife:
             ["--input", str(inp), "--output", str(out), "--multiplier", "2"],
         )
         info = video_info(next(out.glob("*.mp4")))
-        assert abs(info["duration"] - 5.0) < 0.5, (
-            f"Duration: {info['duration']:.2f}s, expected ~5.0s"
+        assert abs(info["duration"] - CLIP_DURATION_S) < 0.5, (
+            f"Duration: {info['duration']:.2f}s, expected ~2.0s"
         )
 
     def test_2x_doubles_frame_count(self, workdir):
@@ -204,7 +204,7 @@ class TestClawMatte:
             ["--input", str(inp), "--output", str(out)],
         )
         info = video_info(next(out.glob("*.mp4")))
-        assert abs(info["duration"] - 5.0) < 0.5
+        assert abs(info["duration"] - CLIP_DURATION_S) < 0.5
 
     def test_output_retains_audio(self, workdir):
         """Output video has an audio stream."""

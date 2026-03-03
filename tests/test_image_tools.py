@@ -22,6 +22,7 @@ from PIL import Image
 from conftest import (
     CLIP_HEIGHT,
     CLIP_WIDTH,
+    DEVICE,
     skill_dir,
     run_skill,
     uv_sync,
@@ -65,7 +66,7 @@ class TestClawAes:
         result = run_skill(
             self.SKILL, "score.py",
             ["--input", str(inp), "--output", str(out),
-             "--mode", "aesthetic", "--top", "3", "--device", "cpu"],
+             "--mode", "aesthetic", "--top", "3", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         ranked = sorted(out.glob("*.jpg"))
@@ -81,7 +82,7 @@ class TestClawAes:
         result = run_skill(
             self.SKILL, "score.py",
             ["--input", str(inp), "--output", str(out),
-             "--mode", "aesthetic", "--top", "1", "--device", "cpu"],
+             "--mode", "aesthetic", "--top", "1", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         ranked = sorted(out.glob("*.jpg"))
@@ -96,7 +97,7 @@ class TestClawAes:
         result = run_skill(
             self.SKILL, "score.py",
             ["--input", str(inp), "--output", str(out),
-             "--mode", "aesthetic", "--top", str(n + 10), "--device", "cpu"],
+             "--mode", "aesthetic", "--top", str(n + 10), "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         ranked = sorted(out.glob("*.jpg"))
@@ -111,7 +112,7 @@ class TestClawAes:
         result = run_skill(
             self.SKILL, "score.py",
             ["--input", str(inp), "--output", str(out),
-             "--mode", "aesthetic", "--top", "3", "--device", "cpu"],
+             "--mode", "aesthetic", "--top", "3", "--device", DEVICE],
         )
         assert result.returncode == 0
         assert not any(out.iterdir())
@@ -152,7 +153,7 @@ class TestClawDepth:
         n_in = len(list(inp.glob("*.jpg")))
         result = run_skill(
             self.SKILL, "bokeh.py",
-            ["--input", str(inp), "--output", str(out), "--device", "cpu"],
+            ["--input", str(inp), "--output", str(out), "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         n_out = len(list(out.glob("*.jpg")))
@@ -163,7 +164,7 @@ class TestClawDepth:
         inp, out = workdir
         run_skill(
             self.SKILL, "bokeh.py",
-            ["--input", str(inp), "--output", str(out), "--device", "cpu"],
+            ["--input", str(inp), "--output", str(out), "--device", DEVICE],
         )
         for src in inp.glob("*.jpg"):
             dst = out / src.name
@@ -179,7 +180,7 @@ class TestClawDepth:
         inp, out = workdir
         run_skill(
             self.SKILL, "bokeh.py",
-            ["--input", str(inp), "--output", str(out), "--device", "cpu"],
+            ["--input", str(inp), "--output", str(out), "--device", DEVICE],
         )
         for src in inp.glob("*.jpg"):
             dst = out / src.name
@@ -199,10 +200,10 @@ class TestClawDepth:
 
         run_skill(self.SKILL, "bokeh.py",
                   ["--input", str(inp), "--output", str(out_low),
-                   "--blur-strength", "5", "--device", "cpu"])
+                   "--blur-strength", "5", "--device", DEVICE])
         run_skill(self.SKILL, "bokeh.py",
                   ["--input", str(inp), "--output", str(out_high),
-                   "--blur-strength", "30", "--device", "cpu"])
+                   "--blur-strength", "30", "--device", DEVICE])
 
         for f in inp.glob("*.jpg"):
             low = np.array(Image.open(out_low / f.name))
@@ -251,7 +252,7 @@ class TestClawBg:
         n_in = len(list(inp.glob("*.jpg")))
         result = run_skill(
             self.SKILL, "rembg_batch.py",
-            ["--input", str(inp), "--output", str(out), "--device", "cpu"],
+            ["--input", str(inp), "--output", str(out), "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         n_out = len(list(out.glob("*.png")))
@@ -262,7 +263,7 @@ class TestClawBg:
         inp, out = workdir
         run_skill(
             self.SKILL, "rembg_batch.py",
-            ["--input", str(inp), "--output", str(out), "--device", "cpu"],
+            ["--input", str(inp), "--output", str(out), "--device", DEVICE],
         )
         for png in out.glob("*.png"):
             with Image.open(png) as img:
@@ -276,7 +277,7 @@ class TestClawBg:
         result = run_skill(
             self.SKILL, "rembg_batch.py",
             ["--input", str(inp), "--output", str(out),
-             "--bg", "#1a1a2e", "--device", "cpu"],
+             "--bg", "#1a1a2e", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         for png in out.glob("*.png"):
@@ -290,7 +291,7 @@ class TestClawBg:
         inp, out = workdir
         run_skill(
             self.SKILL, "rembg_batch.py",
-            ["--input", str(inp), "--output", str(out), "--device", "cpu"],
+            ["--input", str(inp), "--output", str(out), "--device", DEVICE],
         )
         for jpg in inp.glob("*.jpg"):
             png = out / (jpg.stem + ".png")
@@ -342,7 +343,7 @@ class TestClawVlm:
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", "cpu"],
+             "--model", "moondream2", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         n_out = len(list(out.glob("*.json")))
@@ -355,7 +356,7 @@ class TestClawVlm:
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", "cpu"],
+             "--model", "moondream2", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         json_files = list(out.glob("*.json"))
@@ -374,7 +375,7 @@ class TestClawVlm:
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", "cpu"],
+             "--model", "moondream2", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         json_files = list(out.glob("*.json"))
@@ -392,7 +393,7 @@ class TestClawVlm:
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", "cpu"],
+             "--model", "moondream2", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         json_files = list(out.glob("*.json"))
@@ -414,7 +415,7 @@ class TestClawVlm:
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "phi4", "--device", "cpu"],
+             "--model", "phi4", "--device", "cpu"],  # intentionally forced to test guard
         )
         assert result.returncode != 0
         assert "gpu" in result.stderr.lower() or "cuda" in result.stderr.lower(), (

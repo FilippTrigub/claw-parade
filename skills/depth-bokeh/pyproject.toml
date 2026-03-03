@@ -5,8 +5,18 @@ description = "Synthetic bokeh via monocular depth estimation (MiDaS)"
 requires-python = ">=3.10"
 dependencies = [
     "torch>=2.0",
+    "torchvision>=0.1",
     "timm>=0.9",
     "pillow",
     "numpy",
     "opencv-python-headless",
 ]
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }

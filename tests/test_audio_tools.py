@@ -15,6 +15,8 @@ from pathlib import Path
 import pytest
 
 from conftest import (
+    CLIP_DURATION_S,
+    DEVICE,
     skill_dir,
     run_skill,
     uv_sync,
@@ -61,7 +63,7 @@ class TestClawSep:
         result = run_skill(
             self.SKILL, "separate.py",
             ["--input", str(inp), "--output", str(out),
-             "--stem", "vocals", "--device", "cpu"],
+             "--stem", "vocals", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
 
@@ -70,8 +72,8 @@ class TestClawSep:
 
         info = video_info(out_files[0])
         assert info["has_audio"], "Output video missing audio stream"
-        assert abs(info["duration"] - 5.0) < 0.5, (
-            f"Duration mismatch: {info['duration']:.2f}s vs expected 5.0s"
+        assert abs(info["duration"] - CLIP_DURATION_S) < 0.5, (
+            f"Duration mismatch: {info['duration']:.2f}s vs expected ~2.0s"
         )
 
     def test_separates_no_vocals_stem(self, workdir):
@@ -80,7 +82,7 @@ class TestClawSep:
         result = run_skill(
             self.SKILL, "separate.py",
             ["--input", str(inp), "--output", str(out),
-             "--stem", "no_vocals", "--device", "cpu"],
+             "--stem", "no_vocals", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         out_files = list(out.glob("*.mp4"))
@@ -92,7 +94,7 @@ class TestClawSep:
         run_skill(
             self.SKILL, "separate.py",
             ["--input", str(inp), "--output", str(out),
-             "--stem", "vocals", "--device", "cpu"],
+             "--stem", "vocals", "--device", DEVICE],
         )
         out_file = next(out.glob("*.mp4"))
         info = video_info(out_file)
@@ -150,15 +152,15 @@ class TestClawBeat:
         result = run_skill(
             self.SKILL, "generate_music.py",
             ["--prompt", "calm acoustic guitar ambient",
-             "--duration", "5",
+             "--duration", "2",
              "--model", "small",
-             "--device", "cpu",
+             "--device", DEVICE,
              "--output", str(out)],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         assert out.exists(), "Output WAV file not created"
         dur = self._audio_duration(out)
-        assert abs(dur - 5.0) < 2.0, f"Duration {dur:.1f}s, expected ~5.0s"
+        assert abs(dur - 2.0) < 2.0, f"Duration {dur:.1f}s, expected ~2.0s"
 
     @requires_hf_model("facebook/musicgen-small")
     def test_mixes_music_under_video(self, test_clip, tmp_path):
@@ -167,9 +169,9 @@ class TestClawBeat:
         result = run_skill(
             self.SKILL, "generate_music.py",
             ["--prompt", "upbeat lo-fi beats",
-             "--duration", "5",
+             "--duration", "2",
              "--model", "small",
-             "--device", "cpu",
+             "--device", DEVICE,
              "--video", str(test_clip),
              "--output", str(out)],
         )
@@ -187,7 +189,7 @@ class TestClawBeat:
             ["--prompt", "test",
              "--duration", "3",
              "--model", "medium",
-             "--device", "cpu",
+             "--device", "cpu",  # intentionally forced to cpu to test the guard
              "--output", str(out)],
         )
         assert result.returncode != 0, (

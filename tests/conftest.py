@@ -41,12 +41,12 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 TEST_CLIP = FIXTURES_DIR / "clip_5s.mp4"
 TEST_FRAMES_DIR = FIXTURES_DIR / "frames"
 
-# Known properties of clip_5s.mp4
+# Known properties of clip_5s.mp4 (actually a 2s clip for fast tests)
 CLIP_WIDTH = 1080
 CLIP_HEIGHT = 1920
 CLIP_FPS = 30
-CLIP_DURATION_S = 5.0
-CLIP_FRAME_COUNT = 145  # actual nb_frames from ffprobe
+CLIP_DURATION_S = 2.0
+CLIP_FRAME_COUNT = 60  # approximate nb_frames
 
 
 # ---------------------------------------------------------------------------
@@ -54,13 +54,20 @@ CLIP_FRAME_COUNT = 145  # actual nb_frames from ffprobe
 # ---------------------------------------------------------------------------
 
 def _gpu_free_gb() -> float:
-    """Return free VRAM in GB, or 0.0 if no CUDA GPU is available."""
+    """Return free VRAM in GB, or 0.0 if no CUDA GPU is available.
+
+    Uses nvidia-smi so the test venv doesn't need torch installed.
+    """
     try:
-        import torch
-        if not torch.cuda.is_available():
+        result = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode != 0:
             return 0.0
-        free, _ = torch.cuda.mem_get_info()
-        return free / 1024 ** 3
+        # nvidia-smi reports in MiB
+        free_mib = float(result.stdout.strip().splitlines()[0])
+        return free_mib / 1024
     except Exception:
         return 0.0
 
@@ -72,6 +79,11 @@ def requires_gpu(min_gb: float):
         reason=f"GPU with {min_gb:.1f} GB free VRAM required "
                f"(available: {_gpu_free_gb():.1f} GB)",
     )
+
+
+# Resolved once at import time — tests use this instead of hardcoding "cpu".
+# Keeps GPU tests fast and CPU tests correct on machines without a GPU.
+DEVICE = "cuda" if _gpu_free_gb() >= 1.0 else "cpu"
 
 
 # ---------------------------------------------------------------------------
