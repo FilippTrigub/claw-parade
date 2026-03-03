@@ -1,0 +1,6 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "multiplier": 2,
+  "model": "raft_large"
+}

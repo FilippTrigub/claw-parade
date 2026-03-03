@@ -1,0 +1,14 @@
+[project]
+name = "clawanimate"
+version = "0.1.0"
+description = "Animate a still image into a short video clip using LTX-Video"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "diffusers>=0.32",
+    "transformers>=4.40",
+    "accelerate>=0.30",
+    "pillow",
+    "numpy",
+    "sentencepiece",
+]

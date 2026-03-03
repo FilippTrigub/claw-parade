@@ -1,0 +1,14 @@
+[project]
+name = "clawbeat"
+version = "0.1.0"
+description = "Generate royalty-free background music via MusicGen"
+requires-python = ">=3.10"
+dependencies = [
+    # Use transformers instead of audiocraft; same Facebook MusicGen models,
+    # but compatible with Python 3.12 and recent torch versions.
+    "transformers>=4.40",
+    "torch>=2.0",
+    "scipy",
+    "soundfile",
+    "ffmpeg-python",
+]

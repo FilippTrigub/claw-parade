@@ -1,0 +1,11 @@
+[project]
+name = "clawmatte"
+version = "0.1.0"
+description = "Video background removal via frame-by-frame AI matting (rembg BiRefNet)"
+requires-python = ">=3.10"
+dependencies = [
+    "rembg[gpu]>=2.0",
+    "ffmpeg-python",
+    "pillow",
+    "numpy",
+]

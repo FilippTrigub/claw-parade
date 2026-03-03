@@ -1,0 +1,8 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "device": "auto",
+  "model": "htdemucs",
+  "stem": "vocals",
+  "mp3_bitrate": 320
+}

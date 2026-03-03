@@ -1,0 +1,15 @@
+[project]
+name = "clawvace"
+version = "0.1.0"
+description = "Edit video regions via text prompt using Wan2.1-VACE inpainting"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "diffusers>=0.32",
+    "transformers>=4.40",
+    "accelerate>=0.30",
+    "pillow",
+    "numpy",
+    "ffmpeg-python",
+    "sentencepiece",
+]

@@ -1,0 +1,8 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "device": "auto",
+  "model": "isnet-general-use",
+  "bg": null,
+  "output_format": "png"
+}

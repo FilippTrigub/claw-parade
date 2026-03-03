@@ -1,0 +1,12 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "model": "Lightricks/LTX-Video",
+  "prompt": "cinematic slow camera push-in, soft bokeh, gentle natural movement",
+  "negative_prompt": "worst quality, inconsistent motion, blurry, jittery, distorted",
+  "num_frames": 81,
+  "width": 768,
+  "height": 512,
+  "guidance_scale": 3.0,
+  "num_inference_steps": 40
+}

@@ -1,0 +1,11 @@
+pytest-of-*/
+__pycache__/
+.venv/
+*.pyc
+uv.lock
+.claude/
+HEAD
+config
+hooks
+objects/
+refs/

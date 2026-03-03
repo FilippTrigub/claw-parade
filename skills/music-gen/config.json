@@ -1,0 +1,9 @@
+{
+  "output_dir": "./output",
+  "device": "auto",
+  "model": "small",
+  "prompt": "warm upbeat acoustic guitar coffee shop",
+  "duration": 30,
+  "music_volume_lufs": -20,
+  "video": null
+}

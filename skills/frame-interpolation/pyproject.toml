@@ -1,0 +1,12 @@
+[project]
+name = "clawrife"
+version = "0.1.0"
+description = "AI frame interpolation for slow motion and 60fps output (RAFT optical flow)"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "torchvision>=0.15",
+    "ffmpeg-python",
+    "pillow",
+    "numpy",
+]

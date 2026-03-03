@@ -1,0 +1,7 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "device": "auto",
+  "model": "DPT_Large",
+  "blur_strength": 15
+}

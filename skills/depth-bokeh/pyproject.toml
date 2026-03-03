@@ -1,0 +1,12 @@
+[project]
+name = "clawdepth"
+version = "0.1.0"
+description = "Synthetic bokeh via monocular depth estimation (MiDaS)"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "timm>=0.9",
+    "pillow",
+    "numpy",
+    "opencv-python-headless",
+]

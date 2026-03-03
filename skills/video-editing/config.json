@@ -1,0 +1,11 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "model": "Wan-AI/Wan2.1-VACE-1.3B-diffusers",
+  "prompt": "high quality, cinematic, natural movement",
+  "negative_prompt": "worst quality, blurry, distorted",
+  "mask": "background",
+  "strength": 0.85,
+  "num_inference_steps": 30,
+  "guidance_scale": 5.0
+}

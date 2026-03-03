@@ -1,0 +1,12 @@
+[project]
+name = "clawportrait"
+version = "0.1.0"
+description = "Animate a portrait photo using a driving video via LivePortrait"
+requires-python = ">=3.10"
+dependencies = [
+    "torch>=2.0",
+    "liveportrait>=0.1",
+    "pillow",
+    "numpy",
+    "ffmpeg-python",
+]
