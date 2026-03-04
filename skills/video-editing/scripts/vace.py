@@ -178,46 +178,25 @@ def assemble_video(frames_dir: Path, fps: float, audio_source: Path, output_path
 
 def load_pipeline(model_id: str):
     import torch
-    from diffusers import AutoPipelineForInpainting
+    from diffusers import WanVACEPipeline
 
-    print(f"Loading VACE pipeline from '{model_id}'…")
+    print(f"Loading WanVACE pipeline from '{model_id}'…")
     print("  (First run downloads model weights — this may take several minutes.)")
-    pipe = AutoPipelineForInpainting.from_pretrained(
+    pipe = WanVACEPipeline.from_pretrained(
         model_id,
         torch_dtype=torch.bfloat16,
     )
-    pipe.to("cuda")
     pipe.enable_model_cpu_offload()
     return pipe
-
-
-def edit_frame(
-    pipe,
-    frame: Image.Image,
-    mask: Image.Image,
-    prompt: str,
-    negative_prompt: str,
-    strength: float,
-    num_inference_steps: int,
-    guidance_scale: float,
-) -> Image.Image:
-    import torch
-    result = pipe(
-        prompt=prompt,
-        negative_prompt=negative_prompt,
-        image=frame,
-        mask_image=mask,
-        strength=strength,
-        num_inference_steps=num_inference_steps,
-        guidance_scale=guidance_scale,
-        generator=torch.Generator("cuda"),
-    )
-    return result.images[0]
 
 
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
+
+# Maximum dimension for VACE processing (GPU memory budget)
+_MAX_PROC_DIM = 480
+
 
 def process_video(
     input_path: Path,
@@ -225,11 +204,12 @@ def process_video(
     cfg: dict,
     pipe,
 ) -> None:
+    import torch
+
     mask_mode = cfg.get("mask", "background")
     mask_region = cfg.get("mask_region")
     prompt = cfg["prompt"]
     negative_prompt = cfg.get("negative_prompt", "worst quality, blurry, distorted")
-    strength = float(cfg.get("strength", 0.85))
     num_inference_steps = cfg.get("num_inference_steps", 30)
     guidance_scale = float(cfg.get("guidance_scale", 5.0))
 
@@ -244,24 +224,48 @@ def process_video(
         frame_paths = sorted(frames_in.glob("*.png"))
         print(f"  {len(frame_paths)} frames @ {fps:.2f} fps")
 
-        # Compute mask from first frame (reused for all frames)
-        first_frame = Image.open(frame_paths[0]).convert("RGB")
+        # Load all frames
+        frames = [Image.open(fp).convert("RGB") for fp in frame_paths]
+        orig_w, orig_h = frames[0].size
+
+        # Scale down for VACE processing (memory budget), keep aspect ratio
+        scale = min(_MAX_PROC_DIM / orig_w, _MAX_PROC_DIM / orig_h, 1.0)
+        proc_w = max(16, round(orig_w * scale / 16) * 16)
+        proc_h = max(16, round(orig_h * scale / 16) * 16)
+
+        # Compute mask from first frame, replicate for all frames
+        first_frame_proc = frames[0].resize((proc_w, proc_h), Image.LANCZOS)
         if mask_mode == "background":
             print("  Computing background mask via rembg…")
-            mask = make_background_mask(first_frame)
+            mask = make_background_mask(first_frame_proc)
         else:
-            mask = make_region_mask(first_frame, mask_region)
+            mask = make_region_mask(first_frame_proc, mask_region)
 
-        print(f"  Editing frames [prompt: {prompt[:60]}…]")
-        for i, fp in enumerate(frame_paths):
-            frame = Image.open(fp).convert("RGB")
-            edited = edit_frame(
-                pipe, frame, mask, prompt, negative_prompt,
-                strength, num_inference_steps, guidance_scale,
-            )
-            edited.save(frames_out / fp.name)
-            if (i + 1) % 10 == 0:
-                print(f"    {i + 1}/{len(frame_paths)} frames done…")
+        frames_proc = [f.resize((proc_w, proc_h), Image.LANCZOS) for f in frames]
+        masks_proc = [mask.resize((proc_w, proc_h), Image.NEAREST) for _ in frames]
+
+        print(f"  Editing {len(frames_proc)} frames @ {proc_w}×{proc_h} "
+              f"[prompt: {prompt[:60]}…]")
+
+        result = pipe(
+            prompt=prompt,
+            negative_prompt=negative_prompt,
+            video=frames_proc,
+            mask=masks_proc,
+            height=proc_h,
+            width=proc_w,
+            num_frames=len(frames_proc),
+            num_inference_steps=num_inference_steps,
+            guidance_scale=guidance_scale,
+            output_type="pil",
+            generator=torch.Generator("cuda"),
+        )
+
+        # result.frames[0] is a list of PIL Images at proc dimensions
+        output_frames = result.frames[0]
+        for fp, frame in zip(frame_paths, output_frames):
+            # Resize back to original dimensions
+            frame.resize((orig_w, orig_h), Image.LANCZOS).save(frames_out / fp.name)
 
         assemble_video(frames_out, fps, input_path, output_path)
 
@@ -322,6 +326,7 @@ def main() -> None:
     parser.add_argument("--mask", choices=["background", "region"], help="Override mask mode")
     parser.add_argument("--mask-region", help="Override mask_region (x1,y1,x2,y2 fractions)")
     parser.add_argument("--strength", type=float, help="Override strength")
+    parser.add_argument("--steps", type=int, help="Override num_inference_steps")
     parser.add_argument("--model", help="Override model HuggingFace ID")
     args = parser.parse_args()
 
@@ -338,6 +343,8 @@ def main() -> None:
         cfg["mask_region"] = args.mask_region
     if args.strength is not None:
         cfg["strength"] = args.strength
+    if args.steps is not None:
+        cfg["num_inference_steps"] = args.steps
     if args.model:
         cfg["model"] = args.model
 

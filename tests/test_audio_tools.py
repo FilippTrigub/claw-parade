@@ -148,16 +148,18 @@ class TestClawBeat:
     @requires_hf_model("facebook/musicgen-small")
     def test_generates_audio_from_prompt(self, tmp_path):
         """Produces a .wav file of approximately the requested duration."""
-        out = tmp_path / "music.wav"
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
         result = run_skill(
             self.SKILL, "generate_music.py",
             ["--prompt", "calm acoustic guitar ambient",
              "--duration", "2",
              "--model", "small",
              "--device", DEVICE,
-             "--output", str(out)],
+             "--output", str(out_dir)],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
+        out = out_dir / "music.wav"
         assert out.exists(), "Output WAV file not created"
         dur = self._audio_duration(out)
         assert abs(dur - 2.0) < 2.0, f"Duration {dur:.1f}s, expected ~2.0s"
@@ -165,7 +167,8 @@ class TestClawBeat:
     @requires_hf_model("facebook/musicgen-small")
     def test_mixes_music_under_video(self, test_clip, tmp_path):
         """When --video is given, output is an MP4 with audio."""
-        out = tmp_path / "video_with_music.mp4"
+        out_dir = tmp_path / "out"
+        out_dir.mkdir()
         result = run_skill(
             self.SKILL, "generate_music.py",
             ["--prompt", "upbeat lo-fi beats",
@@ -173,9 +176,11 @@ class TestClawBeat:
              "--model", "small",
              "--device", DEVICE,
              "--video", str(test_clip),
-             "--output", str(out)],
+             "--output", str(out_dir)],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
+        # script names the output after the input video
+        out = out_dir / test_clip.name
         assert out.exists(), "Output MP4 not created"
         info = video_info(out)
         assert info["has_video"], "Output MP4 missing video stream"

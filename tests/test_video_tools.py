@@ -20,6 +20,7 @@ from conftest import (
     video_info,
     CLIP_FRAME_COUNT,
     CLIP_FPS,
+    CLIP_DURATION_S,
 )
 
 

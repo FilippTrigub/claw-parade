@@ -106,9 +106,11 @@ def generate_music(
     model = MusicgenForConditionalGeneration.from_pretrained(hf_model_id)
     model.to(device)
 
-    # Compute token budget from desired duration and model frame rate
+    # Compute token budget from desired duration and model frame rate.
+    # frame_rate moved from MusicgenConfig to audio_encoder in newer transformers.
     sampling_rate = model.config.audio_encoder.sampling_rate  # 32000 Hz
-    frame_rate = model.config.frame_rate  # tokens per second
+    frame_rate = getattr(model.config, "frame_rate", None) \
+        or getattr(model.config.audio_encoder, "frame_rate", 50)
     max_new_tokens = int(duration * frame_rate)
 
     inputs = processor(text=[prompt], padding=True, return_tensors="pt").to(device)

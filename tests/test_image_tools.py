@@ -5,7 +5,7 @@ Tools under test:
   clawaes   (aesthetic-selection)  — rank images, copy top-K
   clawdepth (depth-bokeh)          — synthetic bokeh via MiDaS
   clawbg    (bg-removal)           — background removal via rembg
-  clawvlm   (vision-caption)       — image captioning via moondream2
+  clawvlm   (vision-caption)       — image captioning via smolvlm
 
 All tests use `uv run` to execute inside each skill's own virtualenv.
 Tests run on CPU and skip only when a model download fails.
@@ -303,7 +303,7 @@ class TestClawBg:
 
 
 # ===========================================================================
-# clawvlm — Vision Captioning (moondream2, CPU mode)
+# clawvlm — Vision Captioning (smolvlm, CPU mode)
 # ===========================================================================
 
 class TestClawVlm:
@@ -316,7 +316,7 @@ class TestClawVlm:
       - tags is a list of strings
       - Exits 0 on success
 
-    Note: moondream2 weights (~1.8 GB) are downloaded on first run.
+    Note: SmolVLM-256M weights (~1.8 GB) are downloaded on first run.
     """
 
     SKILL = "vision-caption"
@@ -335,7 +335,7 @@ class TestClawVlm:
         out.mkdir()
         return inp, out
 
-    @requires_hf_model("vikhyatk/moondream2")
+    @requires_hf_model("HuggingFaceTB/SmolVLM-256M-Instruct")
     def test_produces_json_per_image(self, workdir):
         """One JSON sidecar per input image."""
         inp, out = workdir
@@ -343,20 +343,20 @@ class TestClawVlm:
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", DEVICE],
+             "--model", "smolvlm", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         n_out = len(list(out.glob("*.json")))
         assert n_out == n_in
 
-    @requires_hf_model("vikhyatk/moondream2")
+    @requires_hf_model("HuggingFaceTB/SmolVLM-256M-Instruct")
     def test_json_has_required_keys(self, workdir):
         """Each JSON contains description, caption, tags."""
         inp, out = workdir
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", DEVICE],
+             "--model", "smolvlm", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         json_files = list(out.glob("*.json"))
@@ -368,14 +368,14 @@ class TestClawVlm:
             assert "caption" in data, f"{js.name}: missing 'caption'"
             assert "tags" in data, f"{js.name}: missing 'tags'"
 
-    @requires_hf_model("vikhyatk/moondream2")
+    @requires_hf_model("HuggingFaceTB/SmolVLM-256M-Instruct")
     def test_description_is_nonempty_string(self, workdir):
         """Description field is a non-empty string."""
         inp, out = workdir
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", DEVICE],
+             "--model", "smolvlm", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         json_files = list(out.glob("*.json"))
@@ -386,14 +386,14 @@ class TestClawVlm:
             assert isinstance(data["description"], str), f"{js.name}: description not str"
             assert len(data["description"]) > 5, f"{js.name}: description too short"
 
-    @requires_hf_model("vikhyatk/moondream2")
+    @requires_hf_model("HuggingFaceTB/SmolVLM-256M-Instruct")
     def test_tags_is_list_of_strings(self, workdir):
         """Tags field is a list (possibly empty) of strings."""
         inp, out = workdir
         result = run_skill(
             self.SKILL, "describe.py",
             ["--input", str(inp), "--output", str(out),
-             "--model", "moondream2", "--device", DEVICE],
+             "--model", "smolvlm", "--device", DEVICE],
         )
         assert result.returncode == 0, f"stderr: {result.stderr}"
         json_files = list(out.glob("*.json"))

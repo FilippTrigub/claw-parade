@@ -1,8 +1,0 @@
-{
-  "output_dir": "./output",
-  "portrait": null,
-  "driver": null,
-  "flag_relative_motion": true,
-  "flag_pasteback": true,
-  "flag_crop_driving_video": true
-}

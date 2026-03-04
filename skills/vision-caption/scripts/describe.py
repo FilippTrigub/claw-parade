@@ -8,8 +8,8 @@ For each image in input_dir, writes a JSON sidecar to output_dir containing:
   - tags:        list of detected themes / keywords
 
 Supported models:
-  moondream2  — 2B params, fast, works on CPU (default)
-  phi4        — 3.8B multimodal, higher quality, requires GPU
+  smolvlm  — 256M params, fast, works on CPU (default)
+  phi4     — 3.8B multimodal, higher quality, requires GPU
 
 Usage:
   python scripts/describe.py [--config config.json]
@@ -25,11 +25,10 @@ from pathlib import Path
 from PIL import Image
 
 INPUT_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
-VALID_MODELS = {"moondream2", "phi4"}
+VALID_MODELS = {"smolvlm", "phi4"}
 VALID_DEVICES = {"auto", "cpu", "cuda"}
 
-MOONDREAM_REPO = "vikhyatk/moondream2"
-MOONDREAM_REVISION = "2024-07-23"
+SMOLVLM_REPO = "HuggingFaceTB/SmolVLM-256M-Instruct"
 PHI4_REPO = "microsoft/Phi-4-multimodal-instruct"
 
 
@@ -47,14 +46,14 @@ def load_config(path: Path) -> dict:
 
 def validate_config(cfg: dict) -> dict:
     errors = []
-    model = cfg.get("model", "moondream2")
+    model = cfg.get("model", "smolvlm")
     if model not in VALID_MODELS:
         errors.append(f"'model' must be one of: {', '.join(VALID_MODELS)}")
     device = cfg.get("device", "auto")
     if device not in VALID_DEVICES:
         errors.append(f"'device' must be one of: {', '.join(VALID_DEVICES)}")
     if model == "phi4" and device == "cpu":
-        errors.append("phi4 requires GPU; use model=moondream2 for CPU inference")
+        errors.append("phi4 requires GPU; use model=smolvlm for CPU inference")
     if errors:
         print("Config errors:", file=sys.stderr)
         for e in errors:
@@ -78,28 +77,35 @@ def resolve_device(cfg: dict) -> str:
 # Model wrappers
 # ---------------------------------------------------------------------------
 
-class Moondream2:
+class SmolVLM:
     def __init__(self, device: str):
         import torch
-        from transformers import AutoModelForCausalLM, AutoTokenizer
+        from transformers import AutoProcessor, SmolVLMForConditionalGeneration
 
-        print(f"Loading moondream2 on {device}…")
-        dtype = "auto" if device == "cuda" else None
-        self._model = AutoModelForCausalLM.from_pretrained(
-            MOONDREAM_REPO,
-            revision=MOONDREAM_REVISION,
-            trust_remote_code=True,
-            torch_dtype=dtype,
+        print(f"Loading SmolVLM-256M on {device}…")
+        self._processor = AutoProcessor.from_pretrained(SMOLVLM_REPO)
+        self._model = SmolVLMForConditionalGeneration.from_pretrained(
+            SMOLVLM_REPO,
+            torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
         ).to(device)
         self._model.eval()
-        self._tokenizer = AutoTokenizer.from_pretrained(
-            MOONDREAM_REPO, revision=MOONDREAM_REVISION, trust_remote_code=True
-        )
         self._device = device
 
     def ask(self, image: Image.Image, question: str) -> str:
-        enc = self._model.encode_image(image)
-        return self._model.answer_question(enc, question, self._tokenizer)
+        import torch
+
+        messages = [{"role": "user", "content": [
+            {"type": "image"},
+            {"type": "text", "text": question},
+        ]}]
+        prompt = self._processor.apply_chat_template(messages, add_generation_prompt=True)
+        inputs = self._processor(text=prompt, images=[image], return_tensors="pt").to(self._device)
+        with torch.no_grad():
+            output = self._model.generate(**inputs, max_new_tokens=256, do_sample=False)
+        decoded = self._processor.decode(
+            output[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+        )
+        return decoded.strip()
 
 
 class Phi4Multimodal:
@@ -136,8 +142,8 @@ class Phi4Multimodal:
 
 
 def load_model(model_name: str, device: str):
-    if model_name == "moondream2":
-        return Moondream2(device)
+    if model_name == "smolvlm":
+        return SmolVLM(device)
     return Phi4Multimodal(device)
 
 
@@ -166,7 +172,7 @@ def process(config_path: Path) -> None:
 
     input_dir = Path(cfg.get("input_dir", "./input"))
     output_dir = Path(cfg.get("output_dir", "./output"))
-    model_name = cfg.get("model", "moondream2")
+    model_name = cfg.get("model", "smolvlm")
     prompt_desc = cfg.get("prompt_description", "Describe this image in one sentence.")
     prompt_cap = cfg.get(
         "prompt_caption",

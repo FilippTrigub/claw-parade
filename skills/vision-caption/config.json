@@ -2,7 +2,7 @@
   "input_dir": "./input",
   "output_dir": "./output",
   "device": "auto",
-  "model": "moondream2",
+  "model": "smolvlm",
   "prompt_description": "Describe this image in one sentence.",
   "prompt_caption": "Write an engaging Instagram caption for this image. Include 3-5 relevant hashtags."
 }

@@ -125,7 +125,8 @@ def estimate_flow(model, frame1_t: "torch.Tensor", frame2_t: "torch.Tensor") -> 
     import torch
     with torch.no_grad():
         # raft returns a list of flow predictions; take the last (finest) one
-        flows = model(frame1_t.unsqueeze(0), frame2_t.unsqueeze(0))
+        # frame tensors already have a batch dimension (1, C, H, W)
+        flows = model(frame1_t, frame2_t)
         return flows[-1]
 
 

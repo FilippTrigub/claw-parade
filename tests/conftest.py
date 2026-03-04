@@ -91,23 +91,28 @@ DEVICE = "cuda" if _gpu_free_gb() >= 1.0 else "cpu"
 # ---------------------------------------------------------------------------
 
 def _hf_model_cached(model_id: str) -> bool:
-    """Return True if model weights are present in the local HF cache.
+    """Return True if model weights are fully present in the local HF cache.
 
     HuggingFace caches models as:
       hub/models--{org}--{name}/snapshots/{hash}/*.safetensors
     A model is considered cached when at least one snapshot contains a
-    .safetensors, .bin, or .pt file (i.e. actual weights, not just code).
+    .safetensors, .bin, or .pt file AND the blobs directory has no
+    .incomplete files (which indicate a partial/interrupted download).
     """
     cache_name = "models--" + model_id.replace("/", "--")
     model_cache = _HF_HUB_CACHE / cache_name
     if not model_cache.exists():
         return False
+    # Any .incomplete blob means the download was interrupted
+    blobs_dir = model_cache / "blobs"
+    if blobs_dir.exists() and any(blobs_dir.glob("*.incomplete")):
+        return False
     snapshots_dir = model_cache / "snapshots"
     if not snapshots_dir.exists():
         return False
     for snapshot in snapshots_dir.iterdir():
-        for ext in ("*.safetensors", "*.bin", "*.pt"):
-            if any(snapshot.glob(ext)):
+        for ext in ("*.safetensors", "*.bin", "*.pt", "*.pth", "*.onnx"):
+            if any(snapshot.rglob(ext)):
                 return True
     return False
 
