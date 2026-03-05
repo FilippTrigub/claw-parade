@@ -1,27 +1,31 @@
-# OpenClaw - Personal Brand Agent
+# 🦉 Claw-Parade - Personal Brand Agent
 
-> **AI-powered personal brand management system** that automates the creation, adaptation, and scheduling of social media content.
+> **AI-powered personal brand management system** that transforms raw inputs into polished, multi-channel social media content with branded images and videos.
 
-Transform raw inputs (articles, notes, ideas, meeting notes) into polished, multi-channel posts complete with branded images and videos.
-
----
-
-## Features
-
-- **Brand Consistency**: Maintains your unique voice, tone, and visual identity across all content
-- **Multi-Channel Output**: Generate platform-specific content for Instagram, LinkedIn, Twitter, and more
-- **Media Generation**: Automated image and video processing with brand-aligned visuals
-- **Smart Scheduling**: Buffer-based scheduling with optimal posting times
-- **Modular Skills**: Extensible skill system for custom workflows
+Transform articles, notes, ideas, and meeting recordings into ready-to-publish content across Instagram, LinkedIn, Twitter, and more — all while maintaining perfect brand consistency.
 
 ---
 
-## Quick Start
+## 🎯 Features
+
+| Feature | 💡 Benefit |
+|---------|----------------|
+| **Brand Consistency** | Maintains your unique voice, tone, and visual identity across all content |
+| **Multi-Channel Output** | Generates platform-specific content for Instagram, LinkedIn, Twitter, and more |
+| **Media Generation** | Automated image and video processing with brand-aligned visuals |
+| **Smart Scheduling** | Buffer-based scheduling with optimal posting times |
+| **Modular Skills** | Extensible skill system for custom workflows |
+| **Docker Ready** | Containerized deployment with GPU acceleration |
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
 - Git (for submodule management)
 - Docker (for containerized deployment)
+- Python with `uv` (for AI enhancement tools)
 
 ### Initialize Project
 
@@ -31,20 +35,10 @@ git clone <repo-url>
 cd claw-parade
 
 # Initialize skills as submodules
-git submodule add https://github.com/FilippTrigub/clawvig skills/video-processing
-git submodule add https://github.com/FilippTrigub/clawimig skills/image-processing
-
-# Update submodules
 git submodule update --init --recursive
-```
 
-### Build Docker Image
-
-```bash
-# Build the base image first
+# Build Docker images
 make build-base
-
-# Build the local image
 docker build -t clawparade .
 ```
 
@@ -65,7 +59,7 @@ docker run -v $(pwd)/output:/output clawparade \
 
 ---
 
-## Workflow
+## 📋 Workflow
 
 ### Phase 1: Brand Initialization (One-Time)
 
@@ -96,18 +90,23 @@ claw schedule --buffer-days 5
 
 ---
 
-## Directory Structure
+## 📁 Directory Structure
 
 ```
 claw-parade/
-├── SOUL.md              # Agent identity and behavior specification
-├── BRAND.md             # Generated brand spec (created by init)
-├── WORKFLOW.md          # Detailed workflow documentation
+├── README.md              # This file
+├── SOUL.md               # Agent identity and behavior specification
+├── BRAND.md              # Generated brand spec (created by init)
+├── WORKFLOW.md           # Detailed workflow documentation
 ├── Dockerfile           # Container build configuration
+├── docker-compose.yml   # Container orchestration
 ├── skills/              # Modular skill definitions
-│   ├── brand-awareness/ # Brand identity maintenance
-│   ├── video-processing/ # Video processing (submodule)
-│   └── image-processing/ # Image processing (submodule)
+│   ├── brand-awareness/  # Brand identity maintenance
+│   ├── video-processing/  # Video enhancement and captioning
+│   ├── image-processing/  # Image resize and filtering
+│   ├── buffer/           # Schedule and publish posts
+│   ├── + 10 standalone skills # AI enhancement tools
+│   └── SKILL.md files    # Individual skill documentation
 ├── input/               # Raw input files (articles, notes, ideas)
 └── output/              # Processed content organized by channel
     ├── instagram/
@@ -117,29 +116,126 @@ claw-parade/
 
 ---
 
-## Documentation
+## 🔧 Docker Integration
 
-| Document | Description |
-|----------|-------------|
-| [SOUL.md](./SOUL.md) | Agent identity, persona, and behavior specs |
-| [WORKFLOW.md](./WORKFLOW.md) | Complete processing workflow and best practices |
-| [Skills](./skills/) | Individual skill documentation and configuration |
+### Docker Compose
 
----
+```yaml
+# Run as service
+docker compose up openclaw-gateway
 
-## Environment Configuration
+# Run CLI commands
+docker compose run openclaw-cli claw init --input ./input/
+```
+
+### Environment Variables
 
 ```bash
+# Core configuration
 CLAW_BRAND_FILE=./BRAND.md         # Path to brand specification
 CLAW_INPUT_DIR=./input/            # Raw input location
 CLAW_OUTPUT_DIR=./output/          # Processed output location
-CLAW_GDRIVE_ENABLED=true           # Enable Google Drive sync
+
+# Scheduling defaults
 CLAW_BUFFER_DAYS=5                 # Default buffer days
 CLAW_DEFAULT_CHANNEL=instagram     # Default target channel
+
+# External services
+CLAW_GDRIVE_ENABLED=true           # Enable Google Drive sync
+BUFFER_API_KEY=your-buffer-token   # Required for scheduling
 ```
 
 ---
 
-## License
+## 🎨 AI Enhancement Tools
+
+OpenClaw includes 12 standalone AI enhancement tools that can be used independently:
+
+| Tool | Input | What it does | Min VRAM |
+|------|-------|--------------|----------|
+| **clawaes** | images | Score and pick the best photos | ~1 GB |
+| **clawdepth** | images | Synthetic bokeh / portrait mode | ~1.5 GB |
+| **clawbg** | images | Remove background, replace with colour/image | ~0.5 GB |
+| **clawvlm** | images | Auto-describe and suggest captions | ~4 GB |
+| **clawrife** | videos | Frame interpolation (60fps / slow motion) | ~2 GB |
+| **clawmatte** | videos | Remove video background, composite backdrop | ~3 GB |
+| **clawsep** | video/audio | Separate vocals from music | ~2 GB |
+| **clawbeat** | prompt / video | Generate brand background music | ~3 GB |
+| **clawanimate** | images | Image → animated video clip | ~8 GB |
+| **clawvace** | video | Edit / inpaint video regions via prompt | ~8 GB |
+| **clawportrait** | portrait + driver video | Animate a face from a driving video | ~4 GB |
+
+**Usage:** Drop files into `./input`, get results in `./output`. Each tool follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
+
+---
+
+## 📚 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [🏷️ SOUL.md](./SOUL.md) | Agent identity, persona, and behavior specs |
+| [📖 WORKFLOW.md](./WORKFLOW.md) | Complete processing workflow and best practices |
+| [🔧 Skills](./skills/) | Individual skill documentation and configuration |
+| [🎨 AI Enhancements](./AI_ENHANCEMENTS.md) | Detailed AI tool documentation (notes) |
+
+---
+
+## 🚀 Getting Help
+
+### CLI Commands
+
+```bash
+# Get help for any command
+claw --help
+claw init --help
+claw process --help
+claw schedule --help
+```
+
+### Common Issues
+
+| Issue | Resolution |
+|-------|------------|
+| No BRAND.md | Auto-trigger Init phase |
+| Unclear input | Request clarification via chat |
+| Media generation fail | Fall back to templates |
+| Scheduling fail | Queue to manual review |
+| Channel not supported | Suggest alternative channels |
+
+---
+
+## 📄 License
 
 Copyright © 2026 Filipp Trigub. All rights reserved.
+
+---
+
+## 🔄 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Add tests for new functionality
+4. Submit a pull request
+
+**Skill Development:** Each skill lives in its own directory with a `SKILL.md` file documenting its purpose, tools, and integration points.
+
+---
+
+## 📊 Project Status
+
+- **Maintained**: Actively developed and improved
+- **Production Ready**: Used for personal brand management
+- **Extensible**: Easy to add new skills and tools
+- **Documented**: Comprehensive documentation and examples
+
+---
+
+## 🌐 Community
+
+- **GitHub**: [Repository](<repo-url>)
+- **Issues**: [Report bugs and request features](<issues-url>)
+- **Discussions**: [Community discussions](<discussions-url>)
+
+---
+
+_This README follows modern documentation patterns with clear visual hierarchy, emoji usage, and comprehensive links to supporting documentation._
