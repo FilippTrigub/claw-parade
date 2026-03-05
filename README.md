@@ -206,36 +206,6 @@ claw schedule --help
 
 ## 📄 License
 
-Copyright © 2026 Filipp Trigub. All rights reserved.
+MIT
 
 ---
-
-## 🔄 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
-
-**Skill Development:** Each skill lives in its own directory with a `SKILL.md` file documenting its purpose, tools, and integration points.
-
----
-
-## 📊 Project Status
-
-- **Maintained**: Actively developed and improved
-- **Production Ready**: Used for personal brand management
-- **Extensible**: Easy to add new skills and tools
-- **Documented**: Comprehensive documentation and examples
-
----
-
-## 🌐 Community
-
-- **GitHub**: [Repository](<repo-url>)
-- **Issues**: [Report bugs and request features](<issues-url>)
-- **Discussions**: [Community discussions](<discussions-url>)
-
----
-
-_This README follows modern documentation patterns with clear visual hierarchy, emoji usage, and comprehensive links to supporting documentation._
