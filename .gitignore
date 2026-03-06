@@ -78,3 +78,6 @@ output/
 # Scheduling data
 schedules/
 /buffer/
+
+# HF HUB
+.model-cache/
