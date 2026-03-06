@@ -1,0 +1,12 @@
+{
+  "model": "flux",
+  "output_dir": "./output",
+  "prompt": "a serene landscape with mountains at sunset, golden hour lighting, highly detailed, cinematic",
+  "negative_prompt": "worst quality, low quality, blurry, distorted, ugly, watermark, text",
+  "width": 1024,
+  "height": 1024,
+  "num_inference_steps": 28,
+  "guidance_scale": 3.5,
+  "seed": null,
+  "num_images": 1
+}

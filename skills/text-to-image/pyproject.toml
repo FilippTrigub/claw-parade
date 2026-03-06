@@ -1,0 +1,16 @@
+[project]
+name = "txt2img"
+version = "0.1.0"
+description = "Text-to-image generation using HuggingFace diffusers"
+requires-python = ">=3.10"
+dependencies = [
+    "diffusers>=0.27.0",
+    "transformers>=4.40.0",
+    "accelerate>=0.30.0",
+    "huggingface-hub>=0.22.0",
+    "safetensors>=0.4.0",
+    "torch>=2.2.0",
+    "torchvision>=0.17.0",
+    "pillow>=10.0.0",
+    "sentencepiece>=0.2.0",
+]
