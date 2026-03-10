@@ -102,6 +102,8 @@ Tell the user the output file paths, mask mode used, and prompt applied.
 | `strength` | float (0, 1] | `0.85` | Inpainting strength |
 | `num_inference_steps` | integer | `30` | Diffusion steps |
 | `guidance_scale` | float | `5.0` | Prompt adherence |
+| `batch_size` | integer | `8` | Frames processed per inference batch (lower for less VRAM) |
+| `max_proc_dim` | integer | `384` | Max frame dimension before inpaint (lower for less VRAM) |
 | `model` | HuggingFace ID | `Wan-AI/Wan2.1-VACE-1.3B-diffusers` | Model to use |
 
 ---

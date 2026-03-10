@@ -7,5 +7,7 @@
   "mask": "background",
   "strength": 0.85,
   "num_inference_steps": 30,
-  "guidance_scale": 5.0
+  "guidance_scale": 5.0,
+  "batch_size": 8,
+  "max_proc_dim": 384
 }

@@ -38,32 +38,42 @@ DEFAULT_MODEL = "Wan-AI/Wan2.1-VACE-1.3B-diffusers"
 # GPU check
 # ---------------------------------------------------------------------------
 
+
 def check_gpu(required_gb: float = MIN_VRAM_GB) -> None:
     import torch
+
     if not torch.cuda.is_available():
         print("Error: clawvace requires a CUDA-capable GPU.", file=sys.stderr)
         print(f"  Required VRAM: {required_gb:.1f} GB", file=sys.stderr)
         print("  No CUDA device detected.", file=sys.stderr)
         sys.exit(1)
     free, total = torch.cuda.mem_get_info()
-    free_gb = free / 1024 ** 3
-    total_gb = total / 1024 ** 3
+    free_gb = free / 1024**3
+    total_gb = total / 1024**3
     if free_gb < required_gb:
         used_gb = total_gb - free_gb
         print("Error: insufficient GPU VRAM for clawvace.", file=sys.stderr)
         print(f"  Required:  {required_gb:.1f} GB", file=sys.stderr)
-        print(f"  Available: {free_gb:.1f} GB  "
-              f"({used_gb:.1f} GB in use, {total_gb:.1f} GB total)", file=sys.stderr)
-        print("  Tip: pause other GPU workloads (e.g. the LLM context) to free VRAM.",
-              file=sys.stderr)
+        print(
+            f"  Available: {free_gb:.1f} GB  "
+            f"({used_gb:.1f} GB in use, {total_gb:.1f} GB total)",
+            file=sys.stderr,
+        )
+        print(
+            "  Tip: pause other GPU workloads (e.g. the LLM context) to free VRAM.",
+            file=sys.stderr,
+        )
         sys.exit(1)
-    print(f"GPU: {torch.cuda.get_device_name()} — "
-          f"{free_gb:.1f} GB free / {total_gb:.1f} GB total")
+    print(
+        f"GPU: {torch.cuda.get_device_name()} — "
+        f"{free_gb:.1f} GB free / {total_gb:.1f} GB total"
+    )
 
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+
 
 def load_config(path: Path) -> dict:
     if not path.exists():
@@ -81,7 +91,9 @@ def validate_config(cfg: dict) -> dict:
     if mask not in {"background", "region"}:
         errors.append("'mask' must be 'background' or 'region'")
     if mask == "region" and not cfg.get("mask_region"):
-        errors.append("'mask_region' is required when mask='region' (format: 'x1,y1,x2,y2')")
+        errors.append(
+            "'mask_region' is required when mask='region' (format: 'x1,y1,x2,y2')"
+        )
     strength = cfg.get("strength", 0.85)
     if not isinstance(strength, (int, float)) or not (0 < strength <= 1):
         errors.append("'strength' must be a float in (0, 1]")
@@ -97,9 +109,11 @@ def validate_config(cfg: dict) -> dict:
 # Mask generation
 # ---------------------------------------------------------------------------
 
+
 def make_background_mask(frame: Image.Image) -> Image.Image:
     """Use rembg to get a foreground alpha, then invert to get background mask."""
     from rembg import remove
+
     rgba = remove(frame.convert("RGBA"))
     alpha = rgba.split()[3]
     # Invert: foreground (alpha=255) → 0 (keep), background (alpha=0) → 255 (edit)
@@ -113,9 +127,12 @@ def make_region_mask(frame: Image.Image, region_str: str) -> Image.Image:
     try:
         x1, y1, x2, y2 = [float(v) for v in region_str.split(",")]
     except ValueError:
-        raise ValueError(f"Invalid mask_region '{region_str}'. Expected 'x1,y1,x2,y2' fractions.")
+        raise ValueError(
+            f"Invalid mask_region '{region_str}'. Expected 'x1,y1,x2,y2' fractions."
+        )
     mask = Image.new("L", (w, h), 0)
     from PIL import ImageDraw
+
     draw = ImageDraw.Draw(mask)
     draw.rectangle(
         [int(x1 * w), int(y1 * h), int(x2 * w), int(y2 * h)],
@@ -128,13 +145,24 @@ def make_region_mask(frame: Image.Image, region_str: str) -> Image.Image:
 # Video I/O helpers
 # ---------------------------------------------------------------------------
 
+
 def extract_frames(video_path: Path, frames_dir: Path) -> float:
     """Extract frames to PNG files. Returns fps."""
     probe = subprocess.run(
-        ["ffprobe", "-v", "error", "-select_streams", "v:0",
-         "-show_entries", "stream=r_frame_rate",
-         "-of", "default=noprint_wrappers=1:nokey=1", str(video_path)],
-        capture_output=True, text=True,
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=r_frame_rate",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(video_path),
+        ],
+        capture_output=True,
+        text=True,
     )
     fps_str = probe.stdout.strip()
     try:
@@ -143,31 +171,64 @@ def extract_frames(video_path: Path, frames_dir: Path) -> float:
     except Exception:
         fps = 30.0
 
-    cmd = ["ffmpeg", "-y", "-i", str(video_path),
-           str(frames_dir / "%06d.png"), "-hide_banner", "-loglevel", "error"]
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(video_path),
+        str(frames_dir / "%06d.png"),
+        "-hide_banner",
+        "-loglevel",
+        "error",
+    ]
     subprocess.run(cmd, check=True)
     return fps
 
 
-def assemble_video(frames_dir: Path, fps: float, audio_source: Path, output_path: Path) -> None:
+def assemble_video(
+    frames_dir: Path, fps: float, audio_source: Path, output_path: Path
+) -> None:
     tmp_video = frames_dir.parent / "assembled.mp4"
     cmd = [
-        "ffmpeg", "-y",
-        "-framerate", str(fps),
-        "-i", str(frames_dir / "%06d.png"),
-        "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
-        str(tmp_video), "-hide_banner", "-loglevel", "error",
+        "ffmpeg",
+        "-y",
+        "-framerate",
+        str(fps),
+        "-i",
+        str(frames_dir / "%06d.png"),
+        "-c:v",
+        "libx264",
+        "-crf",
+        "18",
+        "-pix_fmt",
+        "yuv420p",
+        str(tmp_video),
+        "-hide_banner",
+        "-loglevel",
+        "error",
     ]
     subprocess.run(cmd, check=True)
 
     cmd = [
-        "ffmpeg", "-y",
-        "-i", str(tmp_video),
-        "-i", str(audio_source),
-        "-c:v", "copy", "-c:a", "aac",
-        "-map", "0:v:0", "-map", "1:a:0?",
-        "-shortest", str(output_path),
-        "-hide_banner", "-loglevel", "error",
+        "ffmpeg",
+        "-y",
+        "-i",
+        str(tmp_video),
+        "-i",
+        str(audio_source),
+        "-c:v",
+        "copy",
+        "-c:a",
+        "aac",
+        "-map",
+        "0:v:0",
+        "-map",
+        "1:a:0?",
+        "-shortest",
+        str(output_path),
+        "-hide_banner",
+        "-loglevel",
+        "error",
     ]
     subprocess.run(cmd, check=True)
 
@@ -175,6 +236,7 @@ def assemble_video(frames_dir: Path, fps: float, audio_source: Path, output_path
 # ---------------------------------------------------------------------------
 # VACE pipeline
 # ---------------------------------------------------------------------------
+
 
 def load_pipeline(model_id: str):
     import torch
@@ -186,7 +248,17 @@ def load_pipeline(model_id: str):
         model_id,
         torch_dtype=torch.bfloat16,
     )
-    pipe.enable_model_cpu_offload()
+
+    # Favor lower VRAM usage over speed.
+    if hasattr(pipe, "enable_attention_slicing"):
+        pipe.enable_attention_slicing("max")
+    if hasattr(pipe, "enable_vae_slicing"):
+        pipe.enable_vae_slicing()
+    if hasattr(pipe, "enable_sequential_cpu_offload"):
+        pipe.enable_sequential_cpu_offload()
+    else:
+        pipe.enable_model_cpu_offload()
+
     return pipe
 
 
@@ -194,8 +266,9 @@ def load_pipeline(model_id: str):
 # Main pipeline
 # ---------------------------------------------------------------------------
 
-# Maximum dimension for VACE processing (GPU memory budget)
-_MAX_PROC_DIM = 480
+# Default processing limits for VRAM-constrained environments
+_DEFAULT_MAX_PROC_DIM = 384
+_DEFAULT_BATCH_SIZE = 8
 
 
 def process_video(
@@ -213,6 +286,13 @@ def process_video(
     num_inference_steps = cfg.get("num_inference_steps", 30)
     guidance_scale = float(cfg.get("guidance_scale", 5.0))
 
+    max_proc_dim = int(cfg.get("max_proc_dim", _DEFAULT_MAX_PROC_DIM))
+    batch_size = int(cfg.get("batch_size", _DEFAULT_BATCH_SIZE))
+    if batch_size <= 0:
+        raise ValueError("batch_size must be a positive integer")
+    if max_proc_dim < 64:
+        raise ValueError("max_proc_dim must be >= 64")
+
     with tempfile.TemporaryDirectory(prefix="clawvace_") as tmp_str:
         tmp = Path(tmp_str)
         frames_in = tmp / "frames_in"
@@ -229,7 +309,7 @@ def process_video(
         orig_w, orig_h = frames[0].size
 
         # Scale down for VACE processing (memory budget), keep aspect ratio
-        scale = min(_MAX_PROC_DIM / orig_w, _MAX_PROC_DIM / orig_h, 1.0)
+        scale = min(max_proc_dim / orig_w, max_proc_dim / orig_h, 1.0)
         proc_w = max(16, round(orig_w * scale / 16) * 16)
         proc_h = max(16, round(orig_h * scale / 16) * 16)
 
@@ -239,30 +319,46 @@ def process_video(
             print("  Computing background mask via rembg…")
             mask = make_background_mask(first_frame_proc)
         else:
+            if not isinstance(mask_region, str) or not mask_region:
+                raise ValueError("mask_region must be provided when mask='region'.")
             mask = make_region_mask(first_frame_proc, mask_region)
 
         frames_proc = [f.resize((proc_w, proc_h), Image.LANCZOS) for f in frames]
         masks_proc = [mask.resize((proc_w, proc_h), Image.NEAREST) for _ in frames]
 
-        print(f"  Editing {len(frames_proc)} frames @ {proc_w}×{proc_h} "
-              f"[prompt: {prompt[:60]}…]")
-
-        result = pipe(
-            prompt=prompt,
-            negative_prompt=negative_prompt,
-            video=frames_proc,
-            mask=masks_proc,
-            height=proc_h,
-            width=proc_w,
-            num_frames=len(frames_proc),
-            num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale,
-            output_type="pil",
-            generator=torch.Generator("cuda"),
+        total_frames = len(frames_proc)
+        print(
+            f"  Editing {total_frames} frames @ {proc_w}×{proc_h} "
+            f"in batches of {batch_size} [prompt: {prompt[:60]}…]"
         )
 
-        # result.frames[0] is a list of PIL Images at proc dimensions
-        output_frames = result.frames[0]
+        output_frames = []
+        for start in range(0, total_frames, batch_size):
+            end = min(start + batch_size, total_frames)
+            batch_frames = frames_proc[start:end]
+            batch_masks = masks_proc[start:end]
+            print(f"    Batch {start + 1}-{end}/{total_frames}")
+
+            result = pipe(
+                prompt=prompt,
+                negative_prompt=negative_prompt,
+                video=batch_frames,
+                mask=batch_masks,
+                height=proc_h,
+                width=proc_w,
+                num_frames=len(batch_frames),
+                num_inference_steps=num_inference_steps,
+                guidance_scale=guidance_scale,
+                output_type="pil",
+                generator=torch.Generator("cuda"),
+            )
+
+            # result.frames[0] is a list of PIL Images at proc dimensions
+            output_frames.extend(result.frames[0])
+
+            # Encourage allocator reuse between batches to reduce fragmentation
+            torch.cuda.empty_cache()
+
         for fp, frame in zip(frame_paths, output_frames):
             # Resize back to original dimensions
             frame.resize((orig_w, orig_h), Image.LANCZOS).save(frames_out / fp.name)
@@ -283,7 +379,8 @@ def process(config_path: Path) -> None:
         sys.exit(1)
 
     videos = sorted(
-        p for p in input_dir.iterdir()
+        p
+        for p in input_dir.iterdir()
         if p.is_file() and p.suffix.lower() in VIDEO_EXTENSIONS
     )
     if not videos:
@@ -323,8 +420,12 @@ def main() -> None:
     parser.add_argument("--input", help="Override input_dir")
     parser.add_argument("--output", help="Override output_dir")
     parser.add_argument("--prompt", help="Override prompt")
-    parser.add_argument("--mask", choices=["background", "region"], help="Override mask mode")
-    parser.add_argument("--mask-region", help="Override mask_region (x1,y1,x2,y2 fractions)")
+    parser.add_argument(
+        "--mask", choices=["background", "region"], help="Override mask mode"
+    )
+    parser.add_argument(
+        "--mask-region", help="Override mask_region (x1,y1,x2,y2 fractions)"
+    )
     parser.add_argument("--strength", type=float, help="Override strength")
     parser.add_argument("--steps", type=int, help="Override num_inference_steps")
     parser.add_argument("--model", help="Override model HuggingFace ID")
@@ -349,6 +450,7 @@ def main() -> None:
         cfg["model"] = args.model
 
     import tempfile as _tf, json as _json
+
     with _tf.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as tmp:
         _json.dump(cfg, tmp)
         tmp_path = Path(tmp.name)
