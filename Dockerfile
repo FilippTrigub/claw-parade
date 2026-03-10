@@ -77,6 +77,17 @@ RUN apt-get update && \
 RUN mkdir -p /home/node/.linuxbrew && \
     chown -R node:node /home/node/.linuxbrew
 
+# FFmpeg 7.x shared build — Debian bookworm only ships 5.1.x, but
+# TorchCodec/torchaudio wheels require FFmpeg 6.x+ shared libraries
+RUN curl -fsSL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl-shared.tar.xz \
+        | tar xJ --strip-components=1 -C /usr/local && \
+    ldconfig
+
+ENV LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH}"
+
+# Python packages
+RUN pip3 install --no-cache-dir --break-system-packages protobuf tiktoken
+
 USER node
 ENV HOMEBREW_PREFIX="/home/node/.linuxbrew"
 RUN git clone https://github.com/Homebrew/brew ${HOMEBREW_PREFIX}/Homebrew && \
