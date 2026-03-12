@@ -1,0 +1,15 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "segments": [{"source": "test.mp4", "start": 0, "end": 46}],
+  "output_fps": 30,
+  "auto_detect": {
+    "enabled": true,
+    "mode": "adaptive",
+    "adaptive_threshold": 0.8,
+    "min_scene_len": 8,
+    "min_content_val": 8.0,
+    "min_scene_duration": 0.5,
+    "max_scene_duration": 30.0
+  }
+}

@@ -1,0 +1,11 @@
+[project]
+name = "clawcut"
+version = "0.1.0"
+description = "Cut, rearrange, and export videos at specified FPS"
+requires-python = ">=3.10"
+dependencies = [
+    "moviepy>=2.0.0",
+    "ffmpeg-python>=0.2.0",
+    "scenedetect",
+    "opencv-python-headless",
+]
