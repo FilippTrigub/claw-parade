@@ -11,6 +11,7 @@ Transform articles, notes, ideas, and meeting recordings into ready-to-publish c
 | Feature | 💡 Benefit |
 |---------|----------------|
 | **Brand Consistency** | Maintains your unique voice, tone, and visual identity across all content |
+| **Brand Assets** | Store and manage brand images, fonts for use across all skills |
 | **Multi-Channel Output** | Generates platform-specific content for Instagram, LinkedIn, Twitter, and more |
 | **Media Generation** | Automated image and video processing with brand-aligned visuals |
 | **Smart Scheduling** | Buffer-based scheduling with optimal posting times |
@@ -90,6 +91,64 @@ claw schedule --buffer-days 5
 
 ---
 
+## 🎨 Brand Asset Management
+
+Store and manage brand images and fonts for use across all content processing skills.
+
+### Asset Storage
+
+Brand assets are stored in `skills/brand-awareness/brand-assets/`:
+
+```
+brand-assets/
+├── images/              # Logos, profile pics, templates
+├── fonts/               # .ttf, .otf, .woff files
+└── asset-manifest.json   # Asset index
+```
+
+### CLI Usage
+
+```bash
+# Store a brand image
+python skills/brand-awareness/scripts/brand_assets.py store-image \
+  --input ./logo.png --name main-logo --tags logo,primary
+
+# Store a brand font
+python skills/brand-awareness/scripts/brand_assets.py store-font \
+  --input ./Inter-Bold.ttf --name inter-bold --tags heading
+
+# List all assets
+python skills/brand-awareness/scripts/brand_assets.py list
+
+# Get asset path by name or tag
+python skills/brand-awareness/scripts/brand_assets.py get-path --tag logo
+
+# Remove an asset
+python skills/brand-awareness/scripts/brand_assets.py remove --name main-logo
+```
+
+### For Other Skills
+
+Other skills can access brand assets by reading the manifest:
+
+```python
+import json
+import os
+from pathlib import Path
+
+MANIFEST = Path(__file__).parent.parent / "brand-awareness" / "brand-assets" / "asset-manifest.json"
+
+def get_brand_asset(tag: str) -> Path | None:
+    with open(MANIFEST) as f:
+        data = json.load(f)
+    for img in data.get("images", []):
+        if tag in img.get("tags", []):
+            return MANIFEST.parent / img["path"]
+    return None
+```
+
+---
+
 ## 📁 Directory Structure
 
 ```
@@ -98,15 +157,17 @@ claw-parade/
 ├── SOUL.md               # Agent identity and behavior specification
 ├── BRAND.md              # Generated brand spec (created by init)
 ├── WORKFLOW.md           # Detailed workflow documentation
-├── Dockerfile           # Container build configuration
-├── docker-compose.yml   # Container orchestration
-├── skills/              # Modular skill definitions
-│   ├── brand-awareness/  # Brand identity maintenance
+├── Dockerfile            # Container build configuration
+├── docker-compose.yml    # Container orchestration
+├── skills/               # Modular skill definitions
+│   ├── brand-awareness/  # Brand identity + asset management
+│   │   ├── SKILL.md      # Skill definition
+│   │   ├── scripts/      # Asset management CLI
+│   │   └── brand-assets/ # Stored brand images & fonts
 │   ├── video-processing/  # Video enhancement and captioning
 │   ├── image-processing/  # Image resize and filtering
-│   ├── buffer/           # Schedule and publish posts
-│   ├── + 10 standalone skills # AI enhancement tools
-│   └── SKILL.md files    # Individual skill documentation
+│   ├── buffer/            # Schedule and publish posts
+│   └── + 10 standalone skills # AI enhancement tools
 ├── input/               # Raw input files (articles, notes, ideas)
 └── output/              # Processed content organized by channel
     ├── instagram/

@@ -1,11 +1,11 @@
 ---
 name: canva
-description: "MCP skill for canva. Provides 22 tools: upload-asset-from-url, resolve-shortlink, search-designs, get-design, get-design-pages, get-design-content, get-presenter-notes, import-design-from-url, merge-designs, export-design, get-export-formats, create-folder, move-item-to-folder, list-folder-items, search-folders, comment-on-design, list-comments, list-replies, reply-to-comment, generate-design, create-design-from-candidate, list-brand-kits"
+description: "MCP skill for canva. Provides 23 tools: upload-asset-from-url, upload-asset-from-file, resolve-shortlink, search-designs, get-design, get-design-pages, get-design-content, get-presenter-notes, import-design-from-url, merge-designs, export-design, get-export-formats, create-folder, move-item-to-folder, list-folder-items, search-folders, comment-on-design, list-comments, list-replies, reply-to-comment, generate-design, create-design-from-candidate, list-brand-kits"
 ---
 
 # canva
 
-MCP skill for canva. Provides 22 tools: upload-asset-from-url, resolve-shortlink, search-designs, get-design, get-design-pages, get-design-content, get-presenter-notes, import-design-from-url, merge-designs, export-design, get-export-formats, create-folder, move-item-to-folder, list-folder-items, search-folders, comment-on-design, list-comments, list-replies, reply-to-comment, generate-design, create-design-from-candidate, list-brand-kits
+MCP skill for canva. Provides 23 tools: upload-asset-from-url, upload-asset-from-file, resolve-shortlink, search-designs, get-design, get-design-pages, get-design-content, get-presenter-notes, import-design-from-url, merge-designs, export-design, get-export-formats, create-folder, move-item-to-folder, list-folder-items, search-folders, comment-on-design, list-comments, list-replies, reply-to-comment, generate-design, create-design-from-candidate, list-brand-kits
 
 ## Authentication
 
@@ -110,6 +110,42 @@ asyncio.run(main())
 ```python
 result = await app.upload_asset_from_url(url="example", name="example", user_intent="example")
 ```
+
+### upload-asset-from-file
+
+Upload a local file to Canva. This convenience method automatically serves the local file via a cloudflared tunnel.
+
+**Requirements:**
+- `cloudflared` must be installed on PATH
+- Install from: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| file_path | `str` | Yes | Local path to the file to upload |
+| name | `str` | Yes | Name for the uploaded asset |
+| user_intent | `str` | No | Description of what you're trying to accomplish |
+
+**Example:**
+```python
+# Upload local image to Canva
+result = await app.upload_asset_from_file(
+    file_path="./brand-assets/images/logo.png",
+    name="brand-logo",
+    user_intent="Upload brand logo for designs"
+)
+
+# Upload local video
+result = await app.upload_asset_from_file(
+    file_path="./output/promo-video.mp4",
+    name="promo-video",
+    user_intent="Upload promotional video"
+)
+```
+
+This is useful for:
+- Uploading brand assets from `brand-assets/` to Canva
+- Importing processed content from `output/` to Canva
+- Any local file you want to use in Canva designs
 
 ### resolve-shortlink
 
