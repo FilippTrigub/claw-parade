@@ -51,6 +51,9 @@ RUN npm install -g clawhub
 
 USER node
 
+# Install ClawHub skills
+RUN npx clawhub@latest install remotion-video-toolkit
+
 # git identity + credential helper — uses GH_TOKEN at runtime via gh
 RUN git config --global user.name "FilippTrigub" && \
     git config --global user.email "filipp.trigub@gmail.com" && \
