@@ -5,16 +5,135 @@ cutter.py — Cut, rearrange, and export video segments.
 Usage:
     python scripts/cutter.py --config config.json
     python scripts/cutter.py --input ./input --output ./output --fps 30
+    python scripts/cutter.py --config config.json --no-transcription  # force adaptive
+
+Priority:
+1. Explicit segments (user-provided)
+2. Audio transcription (look for JSON or run transcription)
+3. Adaptive scene detection (fallback)
 """
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 from moviepy import VideoFileClip, concatenate_videoclips
 from scenedetect import open_video, SceneManager
 from scenedetect.detectors import AdaptiveDetector, ContentDetector, ThresholdDetector
+
+
+def load_transcription(transcription_path: Path) -> list[dict] | None:
+    """Load transcription segments from JSON file."""
+    if not transcription_path.exists():
+        return None
+
+    try:
+        with open(transcription_path) as f:
+            data = json.load(f)
+
+        segments = []
+        for seg in data.get("segments", []):
+            start = seg.get("start", 0.0)
+            end = seg.get("end")
+            if end is not None:
+                segments.append(
+                    {"start": start, "end": end, "text": seg.get("text", "")}
+                )
+
+        return segments if segments else None
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"Warning: Failed to load transcription: {e}")
+        return None
+
+
+def run_transcription(
+    video_path: Path,
+    input_dir: Path,
+    output_dir: Path,
+) -> list[dict] | None:
+    """Run audio transcription skill to get timestamped segments."""
+    # Find the audio-transcription skill directory
+    skill_dir = Path(__file__).parent.parent.parent / "audio-transcription"
+    transcriber_script = skill_dir / "scripts" / "transcriber.py"
+
+    if not transcriber_script.exists():
+        print(f"Warning: Transcriber script not found at {transcriber_script}")
+        return None
+
+    # Create a temporary config for transcription
+    video_name = video_path.name
+    temp_config = output_dir / "_temp_transcribe_config.json"
+    config_content = {
+        "input_dir": str(input_dir),
+        "output_dir": str(output_dir),
+        "language": "en",
+    }
+
+    try:
+        with open(temp_config, "w") as f:
+            json.dump(config_content, f)
+
+        print(f"Running audio transcription on {video_name}...")
+        result = subprocess.run(
+            [sys.executable, str(transcriber_script), "--config", str(temp_config)],
+            cwd=str(skill_dir),
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            print(f"Warning: Transcription failed: {result.stderr}")
+            return None
+
+        # Look for the transcription output
+        base_name = video_path.stem
+        transcription_file = output_dir / f"{base_name}_transcription.json"
+        return load_transcription(transcription_file)
+
+    except Exception as e:
+        print(f"Warning: Failed to run transcription: {e}")
+        return None
+    finally:
+        # Clean up temp config
+        if temp_config.exists():
+            temp_config.unlink()
+
+
+def segments_from_transcription(
+    transcription_segments: list[dict],
+    min_duration: float = 1.0,
+    max_duration: float = 30.0,
+) -> list[dict]:
+    """Convert transcription segments to cutting segments with duration filtering."""
+    segments = []
+
+    for seg in transcription_segments:
+        start = seg.get("start", 0.0)
+        end = seg.get("end")
+        if end is None:
+            continue
+
+        duration = end - start
+
+        if duration < min_duration:
+            print(
+                f"Skipping short segment: {start:.2f}s -> {end:.2f}s "
+                f"(duration {duration:.2f}s < {min_duration}s)"
+            )
+            continue
+
+        if duration > max_duration:
+            print(
+                f"Skipping long segment: {start:.2f}s -> {end:.2f}s "
+                f"(duration {duration:.2f}s > {max_duration}s)"
+            )
+            continue
+
+        segments.append({"start": start, "end": end})
+
+    return segments
 
 
 def detect_scenes(
@@ -36,14 +155,14 @@ def detect_scenes(
         mode: Detection mode (content, adaptive, threshold)
         min_scene_duration: Minimum scene duration in seconds
         max_scene_duration: Maximum scene duration in seconds
-        threshold: Pixel diff threshold for ContentDetector (lower = more sensitive)
-        adaptive_threshold: Ratio threshold for AdaptiveDetector (lower = more sensitive)
-        window_width: Frames to average before/after (higher = smoother)
+        threshold: Pixel diff threshold for ContentDetector
+        adaptive_threshold: Ratio threshold for AdaptiveDetector
+        window_width: Frames to average before/after
         min_scene_len: Minimum frames before a cut can be registered
         min_content_val: Minimum content change to register as new scene
 
     Returns:
-        List of segment dicts with 'source', 'start', 'end'
+        List of segment dicts with 'start', 'end'
     """
     video = open_video(str(video_path))
     scene_manager = SceneManager()
@@ -119,16 +238,24 @@ def load_config(config_path: Path) -> dict:
     with open(config_path) as f:
         config = json.load(f)
 
+    transcription_config = config.get("transcription", {})
     auto_detect = config.get("auto_detect", {})
-    has_auto_detect = auto_detect.get("enabled", False)
 
-    if not has_auto_detect:
-        if "segments" not in config or not config["segments"]:
-            print(
-                "Error: 'segments' is required when auto_detect is not enabled",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+    # Determine cutting strategy
+    transcription_enabled = transcription_config.get("enabled", True)
+    has_explicit_segments = "segments" in config and config["segments"]
+    auto_detect_enabled = auto_detect.get("enabled", False)
+
+    if (
+        not has_explicit_segments
+        and not transcription_enabled
+        and not auto_detect_enabled
+    ):
+        print(
+            "Error: Must provide either 'segments', enable 'transcription', or enable 'auto_detect'",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     return config
 
@@ -221,47 +348,113 @@ def main():
         "--output", type=Path, default=Path("./output"), help="Output directory"
     )
     parser.add_argument("--fps", type=int, default=30, help="Output FPS")
+    parser.add_argument(
+        "--no-transcription",
+        action="store_true",
+        help="Disable transcription, use adaptive scene detection only",
+    )
 
     args = parser.parse_args()
 
+    config: dict = {}
     if args.config:
         config = load_config(args.config)
         input_dir = Path(config.get("input_dir", args.input))
         output_dir = Path(config.get("output_dir", args.output))
         segments = config.get("segments", [])
         output_fps = config.get("output_fps", args.fps)
+        transcription_config = config.get("transcription", {})
         auto_detect = config.get("auto_detect", {})
     else:
         input_dir = args.input
         output_dir = args.output
         segments = []
         output_fps = args.fps
-        auto_detect = {}
+        transcription_config = {"enabled": not args.no_transcription}
+        auto_detect = {"enabled": args.no_transcription}
 
-    auto_detect_enabled = auto_detect.get("enabled", True)
+    # Determine cutting method
+    transcription_enabled = (
+        transcription_config.get("enabled", True) and not args.no_transcription
+    )
+    auto_detect_enabled = auto_detect.get("enabled", False) or args.no_transcription
 
-    if auto_detect_enabled:
-        # Always run auto-detect when enabled - ignore any pre-defined segments
-        if "segments" not in config:
-            print(
-                "Error: 'segments' must include source video for auto-detect",
-                file=sys.stderr,
-            )
-            sys.exit(1)
+    # Priority 1: Explicit segments from config
+    if segments:
+        print(f"Using explicit segments from config: {len(segments)} segments")
 
-        segment_def = config["segments"][0]
-        source_video = segment_def.get("source")
+    # Priority 2: Audio transcription (if enabled)
+    elif transcription_enabled:
+        # Get source video from segment definition if available
+        source_video = None
+        if "segments" in config and config["segments"]:
+            source_video = config["segments"][0].get("source")
+
         if not source_video:
-            print(
-                "Error: segments must include 'source' for auto-detect",
-                file=sys.stderr,
-            )
+            # Find first video in input_dir
+            video_extensions = [".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm"]
+            for ext in video_extensions:
+                videos = list(input_dir.glob(f"*{ext}"))
+                if videos:
+                    source_video = videos[0].name
+                    break
+
+        if not source_video:
+            print("Error: No source video found for transcription", file=sys.stderr)
             sys.exit(1)
 
         video_path = input_dir / source_video
-        if not video_path.exists():
-            print(f"Error: source video not found: {video_path}", file=sys.stderr)
+
+        # Look for existing transcription
+        base_name = video_path.stem
+        transcription_file = output_dir / f"{base_name}_transcription.json"
+        transcription_segments = load_transcription(transcription_file)
+
+        # If no existing transcription, try to run it
+        if not transcription_segments:
+            print(f"No existing transcription found, attempting to generate...")
+            transcription_segments = run_transcription(
+                video_path, input_dir, output_dir
+            )
+
+        if transcription_segments:
+            min_duration = transcription_config.get("min_segment_duration", 1.0)
+            max_duration = transcription_config.get("max_segment_duration", 30.0)
+            segments = segments_from_transcription(
+                transcription_segments,
+                min_duration=min_duration,
+                max_duration=max_duration,
+            )
+            print(f"Using transcription-based segments: {len(segments)} segments")
+        elif transcription_config.get("fallback_to_adaptive", True):
+            print("Transcription failed, falling back to adaptive scene detection...")
+            auto_detect_enabled = True
+        else:
+            print(
+                "Error: Transcription enabled but failed and fallback disabled",
+                file=sys.stderr,
+            )
             sys.exit(1)
+
+    # Priority 3: Adaptive scene detection (fallback)
+    if not segments and auto_detect_enabled:
+        source_video = None
+        if "segments" in config and config["segments"]:
+            source_video = config["segments"][0].get("source")
+
+        if not source_video:
+            video_extensions = [".mp4", ".mov", ".avi", ".mkv", ".m4v", ".webm"]
+            for ext in video_extensions:
+                videos = list(input_dir.glob(f"*{ext}"))
+                if videos:
+                    source_video = videos[0].name
+                    break
+
+        if not source_video:
+            print("Error: No source video found for scene detection", file=sys.stderr)
+            sys.exit(1)
+
+        video_path = input_dir / source_video
 
         mode = auto_detect.get("mode", "adaptive")
         min_duration = auto_detect.get("min_scene_duration", 1.0)
@@ -289,7 +482,7 @@ def main():
             {"source": source_video, "start": s["start"], "end": s["end"]}
             for s in detected
         ]
-        print(f"Detected {len(segments)} scenes")
+        print(f"Detected {len(segments)} scenes (adaptive mode)")
 
     if not segments:
         print(

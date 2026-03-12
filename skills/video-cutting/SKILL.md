@@ -3,6 +3,8 @@ name: clawcut
 description: >-
   Cut videos into segments, rearrange them, and produce an output video
   with a specific cuts-per-second rate. Uses MoviePy for video manipulation.
+  Prioritizes audio transcription for timestamped cutting, falls back to
+  adaptive scene detection.
 metadata:
   {
     "openclaw":
@@ -29,7 +31,8 @@ Use this skill when the user wants to:
 - Rearrange video segments in a different order
 - Remove unwanted sections from a video
 - Change the output frame rate (cuts per second)
-- **Auto-detect scene changes** to avoid monotony (smart cutting)
+- **Auto-detect speech segments** for natural cuts (prioritized)
+- Auto-detect scene changes as fallback
 
 ---
 
@@ -73,14 +76,51 @@ Before I cut the video(s), I need to know:
 
 Wait for user response before proceeding.
 
-### Smart Auto-Detect (Optional)
+### 2. Determine Cutting Strategy
 
-If the user wants **automatic scene detection** to avoid monotony:
+**Priority Order:**
+1. **Explicit segments** — If user provides specific start/end times, use those
+2. **Audio transcription** — If `transcription.enabled: true` (default), look for or generate transcription and cut at speech segment boundaries
+3. **Adaptive scene detection** — Fallback if transcription unavailable or fails
+
+### Audio Transcription (Primary Method)
+
+The skill will first try to use **audio transcription** to get timestamped speech segments from the video. This produces more natural cuts aligned with spoken content.
 
 ```
-🤖 Auto-Detect Mode
+🤖 Audio Transcription Mode (PRIORITY)
 
-I can automatically detect scene changes in your video to create cuts.
+The cutter will:
+1. Look for an existing transcription JSON in output_dir (e.g., video_transcription.json)
+2. If not found, run audio transcription automatically
+3. Cut video at speech segment boundaries
+
+⚙️ Configuration:
+   - transcription.enabled: true (default)
+   - fallback_to_adaptive: true (default) — use scene detection if transcription fails
+   - min_segment_duration: minimum seconds per segment (default: 1.0)
+   - max_segment_duration: maximum seconds per segment (default: 30.0)
+
+Example config:
+{
+  "segments": [{"source": "video.mp4", "start": 0, "end": 60}],
+  "transcription": {
+    "enabled": true,
+    "fallback_to_adaptive": true,
+    "min_segment_duration": 1.0,
+    "max_segment_duration": 30.0
+  }
+}
+```
+
+### Adaptive Scene Detection (Fallback)
+
+If transcription is disabled or fails, the skill falls back to visual scene detection:
+
+```
+🎬 Adaptive Scene Detection (FALLBACK)
+
+Automatically detect scene changes in your video to create cuts.
 This avoids boring, repetitive content by cutting at natural transitions.
 
 ⚙️ Detection mode:
@@ -99,34 +139,34 @@ This avoids boring, repetitive content by cutting at natural transitions.
    - min_scene_len: minimum frames before cut (default: 15)
    - min_content_val: minimum content change (default: 15.0)
 
-Example config with auto-detect:
+Example config with auto-detect fallback:
 {
   "segments": [{"source": "video.mp4", "start": 0, "end": 60}],
+  "transcription": {
+    "enabled": false
+  },
   "auto_detect": {
     "enabled": true,
     "mode": "adaptive",
     "min_scene_duration": 1.0,
-    "max_scene_duration": 10.0,
-    "adaptive_threshold": 3.0,
-    "window_width": 2,
-    "min_scene_len": 15
+    "max_scene_duration": 10.0
   }
 }
 ```
 
-### 2. Edit config.json
+### 3. Edit config.json
 
 Write or update `$SKILL_DIR/config.json` based on the user's choices.
 
-### 3. Run
+### 4. Run
 
 ```bash
 cd "$SKILL_DIR" && uv run python scripts/cutter.py --config config.json
 ```
 
-### 4. Report results
+### 5. Report results
 
-Tell the user the output file path, duration, and FPS.
+Tell the user the output file path, duration, and FPS. Mention which method was used (transcription-based or scene detection).
 
 ---
 
@@ -147,33 +187,45 @@ Tell the user the output file path, duration, and FPS.
 | `start` | float | Start time in seconds |
 | `end` | float | End time in seconds |
 
-### Auto-Detect (Optional)
+### Transcription (Priority Method)
 
 | Key | Values | Default | Description |
 |-----|--------|---------|-------------|
-| `enabled` | boolean | `true` | Enable automatic scene detection |
+| `enabled` | boolean | `true` | Enable transcription-based cutting |
+| `fallback_to_adaptive` | boolean | `true` | Use scene detection if transcription fails |
+| `min_segment_duration` | float | `1.0` | Skip segments shorter than this (seconds) |
+| `max_segment_duration` | float | `30.0` | Skip segments longer than this (seconds) |
+
+### Auto-Detect (Fallback)
+
+| Key | Values | Default | Description |
+|-----|--------|---------|-------------|
+| `enabled` | boolean | `false` | Enable automatic scene detection (fallback only) |
 | `mode` | `adaptive`, `content`, `threshold` | `adaptive` | Detection algorithm |
 | `min_scene_duration` | float | `1.0` | Skip scenes shorter than this (seconds) |
 | `max_scene_duration` | float | `10.0` | Skip scenes longer than this (seconds) |
-| `threshold` | float | `27.0` | Pixel diff threshold for content/threshold mode (lower = more sensitive) |
-| `adaptive_threshold` | float | `3.0` | Ratio threshold for adaptive mode (lower = more sensitive) |
-| `window_width` | int | `2` | Frames to average before/after (higher = smoother, slower) |
-| `min_scene_len` | int | `15` | Minimum frames before a cut can be registered |
-| `min_content_val` | float | `15.0` | Minimum content change to register as new scene |
+| `threshold` | float | `27.0` | Pixel diff threshold for content/threshold mode |
+| `adaptive_threshold` | float | `3.0` | Ratio threshold for adaptive mode |
+| `window_width` | int | `2` | Frames to average before/after |
+| `min_scene_len` | int | `15` | Minimum frames before a cut |
+| `min_content_val` | float | `15.0` | Minimum content change |
 
-#### Detection Modes
+#### Detection Modes (Fallback)
 
-- **adaptive** (default): Best for videos with varying lighting or gradual transitions. Uses rolling average to smooth detections.
-- **content**: Best for videos with sharp, clear scene cuts. Uses fixed threshold on pixel differences.
-- **threshold**: Best for detecting fade in/out transitions. Uses brightness threshold.
+- **adaptive** (default): Best for videos with varying lighting or gradual transitions
+- **content**: Best for videos with sharp, clear scene cuts
+- **threshold**: Best for detecting fade in/out transitions
 
 ---
 
 ## Common Invocations
 
 ```bash
-# Default config
+# Default config (uses transcription if available, falls back to adaptive)
 cd "$SKILL_DIR" && uv run python scripts/cutter.py --config config.json
+
+# Force adaptive scene detection (skip transcription)
+cd "$SKILL_DIR" && uv run python scripts/cutter.py --config config.json --no-transcription
 
 # Custom directories
 cd "$SKILL_DIR" && uv run python scripts/cutter.py \
@@ -194,4 +246,5 @@ Audio is preserved from the original video segments.
 - No segments defined → error message, exits
 - Invalid segment times → clear error with expected format
 - Source video not found → error with file not found
+- Transcription fails → falls back to adaptive if enabled, else error
 - Individual segment errors → logged; other segments continue

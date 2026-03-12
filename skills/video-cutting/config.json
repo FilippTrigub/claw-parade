@@ -1,15 +1,18 @@
 {
   "input_dir": "./input",
   "output_dir": "./output",
-  "segments": [{"source": "test.mp4", "start": 0, "end": 46}],
+  "segments": [{"source": "video.mp4", "start": 0, "end": 60}],
   "output_fps": 30,
   "auto_detect": {
     "enabled": true,
     "mode": "adaptive",
-    "adaptive_threshold": 0.8,
-    "min_scene_len": 8,
-    "min_content_val": 8.0,
-    "min_scene_duration": 0.5,
-    "max_scene_duration": 30.0
+    "min_scene_duration": 1.0,
+    "max_scene_duration": 10.0
+  },
+  "transcription": {
+    "enabled": true,
+    "fallback_to_adaptive": true,
+    "min_segment_duration": 1.0,
+    "max_segment_duration": 30.0
   }
 }
