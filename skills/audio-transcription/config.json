@@ -1,0 +1,8 @@
+{
+  "input_dir": "./input",
+  "output_dir": "./output",
+  "model": "distil-whisper/distil-large-v3",
+  "device": "auto",
+  "language": "en",
+  "output_format": "json"
+}

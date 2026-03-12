@@ -1,0 +1,17 @@
+.git
+.gitmodules
+.idea
+.benchmarks
+.claude
+.pytest_cache
+.ruff_cache
+.model-cache
+docs
+input
+output
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+**/.cache
+tests/.venv
+skills/**/.venv

@@ -22,10 +22,6 @@ _MODEL_ENV = {
     "HF_HOME": str(_LOCAL_CACHE / "huggingface"),
     "TORCH_HOME": str(_LOCAL_CACHE / "torch"),
     "HF_HUB_DISABLE_PROGRESS_BARS": "1",
-    # Force offline mode — prevents httpx from trying to connect through the
-    # SOCKS proxy (which requires socksio). Models must be pre-cached locally.
-    "HF_HUB_OFFLINE": "1",
-    "TRANSFORMERS_OFFLINE": "1",
     # suppress uv's VIRTUAL_ENV warning when running from within tests/.venv
     "VIRTUAL_ENV": "",
 }
@@ -53,6 +49,7 @@ CLIP_FRAME_COUNT = 60  # approximate nb_frames
 # GPU detection
 # ---------------------------------------------------------------------------
 
+
 def _gpu_free_gb() -> float:
     """Return free VRAM in GB, or 0.0 if no CUDA GPU is available.
 
@@ -61,7 +58,9 @@ def _gpu_free_gb() -> float:
     try:
         result = subprocess.run(
             ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         if result.returncode != 0:
             return 0.0
@@ -77,7 +76,7 @@ def requires_gpu(min_gb: float):
     return pytest.mark.skipif(
         _gpu_free_gb() < min_gb,
         reason=f"GPU with {min_gb:.1f} GB free VRAM required "
-               f"(available: {_gpu_free_gb():.1f} GB)",
+        f"(available: {_gpu_free_gb():.1f} GB)",
     )
 
 
@@ -89,6 +88,7 @@ DEVICE = "cuda" if _gpu_free_gb() >= 1.0 else "cpu"
 # ---------------------------------------------------------------------------
 # HuggingFace model cache detection
 # ---------------------------------------------------------------------------
+
 
 def _hf_model_cached(model_id: str) -> bool:
     """Return True if model weights are fully present in the local HF cache.
@@ -127,7 +127,7 @@ def requires_hf_model(*model_ids: str):
     return pytest.mark.skipif(
         bool(missing),
         reason=f"HF model(s) not in local cache (run outside sandbox to "
-               f"pre-download): {', '.join(missing)}",
+        f"pre-download): {', '.join(missing)}",
     )
 
 
@@ -135,12 +135,14 @@ def requires_hf_model(*model_ids: str):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def skill_dir(name: str) -> Path:
     return SKILLS_DIR / name
 
 
-def run_skill(skill_name: str, script: str, args: list[str],
-              cwd: Path | None = None) -> subprocess.CompletedProcess:
+def run_skill(
+    skill_name: str, script: str, args: list[str], cwd: Path | None = None
+) -> subprocess.CompletedProcess:
     """Run a skill script via uv run, with local model cache dirs."""
     cmd = ["uv", "run", "python", f"scripts/{script}"] + args
     result = subprocess.run(
@@ -156,10 +158,9 @@ def run_skill(skill_name: str, script: str, args: list[str],
 def video_info(path: Path) -> dict:
     """Return dict with width, height, fps, duration, nb_frames, has_audio."""
     probe = subprocess.run(
-        ["ffprobe", "-v", "error",
-         "-show_streams",
-         "-of", "json", str(path)],
-        capture_output=True, text=True,
+        ["ffprobe", "-v", "error", "-show_streams", "-of", "json", str(path)],
+        capture_output=True,
+        text=True,
     )
     data = json.loads(probe.stdout)
     info = {"has_audio": False, "has_video": False}
@@ -182,7 +183,8 @@ def uv_sync(skill_name: str) -> None:
     result = subprocess.run(
         ["uv", "sync"],
         cwd=skill_dir(skill_name),
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     if result.returncode != 0:
         pytest.fail(f"uv sync failed for {skill_name}:\n{result.stderr}")
@@ -191,6 +193,7 @@ def uv_sync(skill_name: str) -> None:
 # ---------------------------------------------------------------------------
 # Session-scoped fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="session")
 def test_clip() -> Path:
