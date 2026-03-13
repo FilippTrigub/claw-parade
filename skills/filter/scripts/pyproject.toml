@@ -1,0 +1,10 @@
+[project]
+name = "clawimig"
+version = "1.0.0"
+description = "Instagram image processing pipeline"
+requires-python = ">=3.10"
+dependencies = [
+    "pilgram>=2.0.0",
+    "pillow",
+    "numpy",
+]

@@ -1,0 +1,13 @@
+[project]
+name = "clawvig"
+version = "0.1.0"
+description = "Instagram video enhancement + captioning pipeline"
+requires-python = ">=3.12"
+dependencies = [
+    "pycaps[all]",
+    "ffmpeg-python",
+    "ffmpeg-normalize",
+]
+
+[tool.uv.sources]
+pycaps = { git = "https://github.com/francozanardi/pycaps.git" }

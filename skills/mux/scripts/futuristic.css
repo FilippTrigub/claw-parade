@@ -1,0 +1,79 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+.word {
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    font-size: 17px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: transparent;
+    padding: 3px 5px;
+}
+
+/* Alternating gold / magenta — even words */
+.word:nth-child(even) {
+    color: rgba(200, 150, 0, 0.7);
+    text-shadow: 0 0 6px rgba(200, 140, 0, 0.4);
+}
+
+/* Alternating gold / magenta — odd words */
+.word:nth-child(odd) {
+    color: rgba(255, 0, 220, 0.55);
+    text-shadow: 0 0 6px rgba(255, 0, 220, 0.35);
+}
+
+/* Active word: white-hot with a glow matching its base color */
+.word-being-narrated {
+    color: #FFFFFF !important;
+    text-shadow:
+        0 0 8px currentColor,
+        0 0 20px rgba(255, 255, 255, 0.6),
+        1px 1px 0 rgba(0, 0, 0, 0.9),
+        -1px -1px 0 rgba(0, 0, 0, 0.9) !important;
+    background: rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+/* Even active word: gold glow */
+.word:nth-child(even).word-being-narrated {
+    text-shadow:
+        0 0 8px #FFB800,
+        0 0 20px rgba(210, 150, 0, 0.7),
+        1px 1px 0 rgba(0, 0, 0, 0.9),
+        -1px -1px 0 rgba(0, 0, 0, 0.9) !important;
+    border-bottom-color: rgba(210, 160, 0, 0.7);
+}
+
+/* Odd active word: magenta glow */
+.word:nth-child(odd).word-being-narrated {
+    text-shadow:
+        0 0 8px #FF00FF,
+        0 0 20px rgba(255, 0, 220, 0.7),
+        1px 1px 0 rgba(0, 0, 0, 0.9),
+        -1px -1px 0 rgba(0, 0, 0, 0.9) !important;
+    border-bottom-color: rgba(255, 0, 255, 0.6);
+}
+
+.word-not-narrated-yet {
+    opacity: 0.45;
+}
+
+.word-already-narrated {
+    opacity: 0.65;
+}
+
+.first-word-in-line {
+    border-top-left-radius: 2px;
+    border-bottom-left-radius: 2px;
+}
+
+.last-word-in-line {
+    border-top-right-radius: 2px;
+    border-bottom-right-radius: 2px;
+}
+
+.line {
+    background: rgba(0, 5, 20, 0.72);
+    border-left: 2px solid rgba(80, 0, 120, 0.9);
+    padding-left: 6px;
+}

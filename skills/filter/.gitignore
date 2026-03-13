@@ -1,0 +1,30 @@
+# Dependencies
+scripts/node_modules/
+
+# Intermediate processing files
+scripts/tmp/*
+!scripts/tmp/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# User data directories — keep dirs, ignore contents
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+
+# Planning / session notes
+PLAN.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

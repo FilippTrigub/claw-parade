@@ -1,0 +1,11 @@
+{
+  "format": "portrait",
+  "custom_dimensions": null,
+  "background_color": "#ffffff",
+  "fit": "contain",
+  "filter": "clarendon",
+  "output_format": "jpeg",
+  "quality": 90,
+  "input_dir": "./input",
+  "output_dir": "./output"
+}

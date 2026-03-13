@@ -1,0 +1,2 @@
+# pycaps with all optional dependencies (Whisper + Playwright renderer)
+pycaps[all] @ git+https://github.com/francozanardi/pycaps.git

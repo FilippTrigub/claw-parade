@@ -1,0 +1,12 @@
+{
+  "name": "clawimig-scripts",
+  "version": "1.0.0",
+  "description": "Sharp-based image resize stage for clawimig pipeline",
+  "main": "resize.js",
+  "scripts": {
+    "install-deps": "npm install"
+  },
+  "dependencies": {
+    "sharp": "^0.34.0"
+  }
+}
