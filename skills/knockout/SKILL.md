@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawbg — Background Removal
+# knockout — Background Removal
 
 Removes image backgrounds using rembg (IS-Net by default). The foreground
 can be kept as a transparent PNG or composited onto a custom background.

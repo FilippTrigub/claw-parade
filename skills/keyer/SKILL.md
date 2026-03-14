@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawmatte — AI Video Background Removal
+# keyer — AI Video Background Removal
 
 Removes the background from every frame of a video using BiRefNet-general
 (a high-quality matting model via rembg). Optionally composites onto a flat

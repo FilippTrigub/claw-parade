@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawbeat — Brand Music Generation
+# score — Brand Music Generation
 
 Generates royalty-free background music from a text prompt using Meta's
 MusicGen. The result is saved as a WAV file or mixed directly under a video.

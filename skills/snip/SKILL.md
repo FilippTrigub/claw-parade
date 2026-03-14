@@ -15,7 +15,7 @@ metadata:
   }
 ---
 
-# clawcut — Video Cutting and Rearranging
+# snip — Video Cutting and Rearranging
 
 Cuts videos into segments, reorders them, and exports at a specified frame rate.
 Useful for creating highlight reels, reordering scenes, or changing video pacing.

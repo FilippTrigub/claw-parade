@@ -1,4 +1,4 @@
-# 🦉 Claw-Parade - Personal Brand Agent
+# 🦉 Abra - Agent de Branding
 
 > **AI-powered personal brand management system** that transforms raw inputs into polished, multi-channel social media content with branded images and videos.
 
@@ -97,7 +97,7 @@ Store and manage brand images and fonts for use across all content processing sk
 
 ### Asset Storage
 
-Brand assets are stored in `skills/brand-awareness/brand-assets/`:
+Brand assets are stored in `skills/persona/brand-assets/`:
 
 ```
 brand-assets/
@@ -110,11 +110,11 @@ brand-assets/
 
 ```bash
 # Store a brand image
-python skills/brand-awareness/scripts/brand_assets.py store-image \
+python skills/persona/scripts/brand_assets.py store-image \
   --input ./logo.png --name main-logo --tags logo,primary
 
 # Store a brand font
-python skills/brand-awareness/scripts/brand_assets.py store-font \
+python skills/persona/scripts/brand_assets.py store-font \
   --input ./Inter-Bold.ttf --name inter-bold --tags heading
 
 # List all assets
@@ -136,7 +136,7 @@ import json
 import os
 from pathlib import Path
 
-MANIFEST = Path(__file__).parent.parent / "brand-awareness" / "brand-assets" / "asset-manifest.json"
+MANIFEST = Path(__file__).parent.parent / "persona" / "brand-assets" / "asset-manifest.json"
 
 def get_brand_asset(tag: str) -> Path | None:
     with open(MANIFEST) as f:
@@ -160,14 +160,14 @@ claw-parade/
 ├── Dockerfile            # Container build configuration
 ├── docker-compose.yml    # Container orchestration
 ├── skills/               # Modular skill definitions
-│   ├── brand-awareness/  # Brand identity + asset management
+│   ├── persona/         # Brand identity + asset management
 │   │   ├── SKILL.md      # Skill definition
 │   │   ├── scripts/      # Asset management CLI
 │   │   └── brand-assets/ # Stored brand images & fonts
-│   ├── video-processing/  # Video enhancement and captioning
-│   ├── image-processing/  # Image resize and filtering
-│   ├── buffer/            # Schedule and publish posts
-│   └── + 10 standalone skills # AI enhancement tools
+│   ├── mux/              # Video enhancement and captioning
+│   ├── filter/           # Image resize and filtering
+│   ├── buffer/           # Schedule and publish posts
+│   └── + 14 standalone skills # AI enhancement tools
 ├── input/               # Raw input files (articles, notes, ideas)
 └── output/              # Processed content organized by channel
     ├── instagram/
@@ -208,25 +208,26 @@ BUFFER_API_KEY=your-buffer-token   # Required for scheduling
 
 ---
 
-## 🎨 AI Enhancement Tools
+## 🎨 Skills & Tools
 
-OpenClaw includes 12 standalone AI enhancement tools that can be used independently:
+Abra includes 18 specialized skills for personal brand management:
 
-| Tool | Input | What it does | Min VRAM |
-|------|-------|--------------|----------|
-| **clawaes** | images | Score and pick the best photos | ~1 GB |
-| **clawdepth** | images | Synthetic bokeh / portrait mode | ~1.5 GB |
-| **clawbg** | images | Remove background, replace with colour/image | ~0.5 GB |
-| **clawvlm** | images | Auto-describe and suggest captions | ~4 GB |
-| **clawrife** | videos | Frame interpolation (60fps / slow motion) | ~2 GB |
-| **clawmatte** | videos | Remove video background, composite backdrop | ~3 GB |
-| **clawsep** | video/audio | Separate vocals from music | ~2 GB |
-| **clawbeat** | prompt / video | Generate brand background music | ~3 GB |
-| **clawanimate** | images | Image → animated video clip | ~8 GB |
-| **clawvace** | video | Edit / inpaint video regions via prompt | ~8 GB |
-| **clawportrait** | portrait + driver video | Animate a face from a driving video | ~4 GB |
+| Skill | Input | What it does | Min VRAM |
+|-------|-------|--------------|----------|
+| **grade** | images | Score and pick the best photos | ~1 GB |
+| **portrait** | images | Synthetic bokeh / portrait mode | ~1.5 GB |
+| **knockout** | images | Remove background, replace with colour/image | ~0.5 GB |
+| **alt** | images | Auto-describe and suggest captions | ~4 GB |
+| **tween** | videos | Frame interpolation (60fps / slow motion) | ~2 GB |
+| **keyer** | videos | Remove video background, composite backdrop | ~3 GB |
+| **demix** | video/audio | Separate vocals from music | ~2 GB |
+| **score** | prompt / video | Generate brand background music | ~3 GB |
+| **liven** | images | Image → animated video clip | ~8 GB |
+| **cutlab** | video | Edit / inpaint video regions via prompt | ~8 GB |
 
-**Usage:** Drop files into `./input`, get results in `./output`. Each tool follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
+**Core Skills:** persona, verbatim, snip, render, mux, filter, buffer, canva
+
+**Usage:** Each skill follows the same conventions (`uv sync`, `--input`, `--output`, `--device cpu` fallback).
 
 ---
 
@@ -236,8 +237,8 @@ OpenClaw includes 12 standalone AI enhancement tools that can be used independen
 |----------|-------------|
 | [🏷️ SOUL.md](./SOUL.md) | Agent identity, persona, and behavior specs |
 | [📖 WORKFLOW.md](./WORKFLOW.md) | Complete processing workflow and best practices |
-| [🔧 Skills](./skills/) | Individual skill documentation and configuration |
-| [🎨 AI Enhancements](./AI_ENHANCEMENTS.md) | Detailed AI tool documentation (notes) |
+| [🔧 Skills](./skills/) | Individual skill documentation |
+| [📋 SKILLS.md](./SKILLS.md) | Detailed skill documentation and use cases |
 
 ---
 

@@ -15,7 +15,7 @@ metadata:
   }
 ---
 
-# clawvig — Instagram Video Pipeline
+# mux — Instagram Video Pipeline
 
 Enhances videos (sharpening, colour grading, warmth) and burns in animated captions. Enhancement runs before captioning so filters don't interact with caption rendering.
 

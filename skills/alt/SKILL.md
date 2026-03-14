@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawvlm — Vision-Language Image Captioner
+# alt — Auto-Caption
 
 Runs a local VLM over each image in `input_dir` and writes a JSON sidecar to
 `output_dir`. Useful for auto-generating captions, understanding batch content,

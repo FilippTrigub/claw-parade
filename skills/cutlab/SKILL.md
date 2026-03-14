@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawvace — AI Video Region Editing
+# cutlab — AI Video Region Editing
 
 Edits a masked region of every frame of a video using the Wan2.1-VACE-1.3B
 diffusion model. Describe the desired result in a text prompt; the model

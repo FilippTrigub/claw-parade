@@ -49,26 +49,26 @@ Output: Brand-aligned post ready for channel formatting
 
 #### 2.4 Process Media (Image/Video)
 
-**Images** — use the `clawimig` skill:
+**Images** — use the `filter` skill:
 ```bash
 # Install deps (first run only)
-cd skills/image-processing/scripts && uv sync && npm install
+cd skills/filter/scripts && uv sync && npm install
 
 # Run the pipeline
-uv run --project skills/image-processing/scripts \
-  python skills/image-processing/scripts/process.py --config config.json
+uv run --project skills/filter/scripts \
+  python skills/filter/scripts/process.py --config config.json
 ```
 Output lands in `output/` (path set in `config.json`).
 
-**Videos** — use the `clawvig` skill:
+**Videos** — use the `mux` skill:
 ```bash
 # Install deps (first run only)
-cd ~/.openclaw/skills/clawvig && uv sync
+cd ~/.openclaw/skills/mux && uv sync
 
 # Cinematic preset with futuristic captions
-cd ~/.openclaw/skills/clawvig && uv run python scripts/caption_service.py \
+cd ~/.openclaw/skills/mux && uv run python scripts/caption_service.py \
   --output output --preset cinematic \
-  --css ~/.openclaw/skills/clawvig/scripts/futuristic.css
+  --css ~/.openclaw/skills/mux/scripts/futuristic.css
 ```
 Output lands in `~/.openclaw/skills/clawvig/output/`.
 
@@ -118,11 +118,11 @@ claw-parade/
 ├── BRAND.md                   # Brand identity (generated)
 ├── WORKFLOW.md                # This file
 ├── skills/
-│   ├── brand-awareness/
+│   ├── persona/
 │   │   └── SKILL.md          # Brand awareness skill definition
-│   ├── video-processing/      # Submodule: clawvig
-│   ├── image-processing/      # Submodule: clawimig
-│   └── buffer/                # Buffer scheduling skill
+│   ├── mux/                   # Video enhancement and captioning
+│   ├── filter/                # Image resize, crop, and filtering
+│   └── buffer/                # Schedule and publish posts
 ├── input/                     # Raw input files
 │   └── [user-provided content]
 └── output/                    # Processed outputs
@@ -138,9 +138,9 @@ claw-parade/
 
 | Skill | Location | Purpose |
 |-------|----------|---------|
-| brand-awareness | `skills/brand-awareness/` | Brand identity maintenance |
-| video-processing | `skills/video-processing/` (clawvig) | Video enhancement and captioning |
-| image-processing | `skills/image-processing/` (clawimig) | Image resize, crop, and filtering |
+| persona | `skills/persona/` | Brand identity maintenance |
+| mux | `skills/mux/` | Video enhancement and captioning |
+| filter | `skills/filter/` | Image resize, crop, and filtering |
 | buffer | `skills/buffer/` | Schedule and publish posts |
 
 ---
@@ -163,20 +163,12 @@ cd skills/buffer/scripts && uv sync
 ### Regular Use
 ```bash
 # Process images
-uv run --project skills/image-processing/scripts \
-  python skills/image-processing/scripts/process.py --config config.json
+uv run --project skills/filter/scripts \
+  python skills/filter/scripts/process.py --config config.json
 
 # Process video
-cd ~/.openclaw/skills/clawvig && uv run python scripts/caption_service.py \
+cd ~/.openclaw/skills/mux && uv run python scripts/caption_service.py \
   --output output --preset cinematic
-
-# Schedule post (local file paths work directly)
-cd skills/buffer/scripts
-uv run posts.py create \
-  --channel-id CHANNEL_ID \
-  --text "Caption here" \
-  --mode addToQueue \
-  --image-url ../../output/instagram/photo.jpg
 ```
 
 ---

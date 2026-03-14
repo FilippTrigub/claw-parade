@@ -12,7 +12,7 @@ metadata:
   }
 ---
 
-# clawimig — Instagram Image Pipeline
+# filter — Instagram Image Pipeline
 
 Two-stage pipeline that prepares images for Instagram:
 - **Stage 1** — resize, crop, or pad to exact Instagram dimensions (Node.js / sharp)

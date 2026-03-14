@@ -1,5 +1,5 @@
 ---
-name: txt2img
+name: render
 description: >-
   Generate images from text prompts using HuggingFace diffusers. Supports multiple
   model architectures including FLUX, SDXL, SD3, and Playground v2. Can use
@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# txt2img — Text to Image Generation
+# render — Text to Image Generation
 
 Generate images from text prompts using state-of-the-art diffusion models from
 HuggingFace. Supports multiple model architectures with automatic downloading.

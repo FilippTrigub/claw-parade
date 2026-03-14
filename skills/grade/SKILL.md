@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawaes — Aesthetic Image Auto-Selection
+# grade — Aesthetic Image Auto-Selection
 
 Scores images by perceived visual quality and copies the top-K to output.
 Eliminates manual photo culling.

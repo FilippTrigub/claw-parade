@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawsep — Audio Source Separation
+# demix — Audio Source Separation
 
 Separates audio stems from video or audio files using Meta's Demucs model.
 For video inputs, the selected stem is remuxed back into the video (original

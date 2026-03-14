@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawdepth — Synthetic Bokeh via Depth Estimation
+# portrait — Synthetic Bokeh via Depth Estimation
 
 Estimates per-pixel depth from each image using Intel MiDaS, then applies
 variable lens blur: near objects stay sharp, far objects blur progressively.

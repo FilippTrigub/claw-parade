@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawtranscribe — Audio Transcription
+# verbatim — Audio Transcription
 
 Transcribes audio from video or audio files using HuggingFace ASR models.
 Outputs a JSON file with per-segment text and timestamps for downstream

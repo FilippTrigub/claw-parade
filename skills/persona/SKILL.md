@@ -1,3 +1,10 @@
+---
+name: persona
+description: >-
+  Maintains and applies brand identity across all content operations.
+  Ensures every output aligns with the personal brand's voice, values, and visual identity.
+---
+
 # Brand Awareness Skill
 
 **Description**: Maintains and applies brand identity across all content operations. This skill ensures every output aligns with the personal brand's voice, values, and visual identity.

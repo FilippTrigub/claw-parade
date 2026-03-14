@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawrife — AI Frame Interpolation
+# tween — AI Frame Interpolation
 
 Increases video frame rate using RAFT optical flow to synthesise intermediate
 frames. 24 fps → 48/96 fps, or any source fps × 2/4.

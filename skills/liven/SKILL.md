@@ -14,7 +14,7 @@ metadata:
   }
 ---
 
-# clawanimate — Image to Video Animation
+# liven — Image to Video Animation
 
 Brings still images to life using the LTX-Video diffusion model. Provide an
 image and a motion prompt; the model generates a short video clip (~3 seconds
